@@ -3,7 +3,7 @@
     <el-header class="header">
       <div class="logo">超市管理后台</div>
       <div class="user-info">
-        <span>{{ userStore.userInfo.realName || userStore.userInfo.username || '管理员' }}</span>
+        <span>管理员</span>
         <el-button text @click="handleLogout">退出</el-button>
       </div>
     </el-header>

@@ -13,8 +13,7 @@
     "vue-router": "^4.2.5",
     "axios": "^1.6.2",
     "element-plus": "^2.4.4",
-    "pinia": "^2.1.7",
-    "echarts": "^5.4.3"
+    "pinia": "^2.1.7"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.5.2",

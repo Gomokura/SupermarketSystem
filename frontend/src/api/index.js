@@ -4,6 +4,9 @@ export const authAPI = {
   login(data) {
     return request.post('/auth/login', data)
   },
+  adminLogin(data) {
+    return request.post('/auth/admin/login', data)
+  },
   register(data) {
     return request.post('/auth/register', data)
   },
@@ -72,9 +75,6 @@ export const orderAPI = {
   },
   cancel(orderId) {
     return request.put(`/orders/cancel/${orderId}`)
-  },
-  confirm(orderId) {
-    return request.put(`/orders/confirm/${orderId}`)
   }
 }
 
@@ -135,9 +135,6 @@ export const adminAPI = {
   },
   getSuppliers() {
     return request.get('/admin/suppliers')
-  },
-  shipOrder(orderId) {
-    return request.put(`/admin/orders/${orderId}/ship`)
   },
   getPurchaseOrders(params) {
     return request.get('/admin/purchase-orders', { params })

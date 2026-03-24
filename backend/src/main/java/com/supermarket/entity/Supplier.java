@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import java.util.Date;
 
 @Data
 @TableName("SUPPLIERS")
@@ -12,9 +11,12 @@ public class Supplier {
     @TableId(type = IdType.AUTO)
     private Integer supplierId;
     private String supplierName;
-    private String contactName;   // 联系人姓名 → DB列: contact_name
-    private String contactPhone;  // 联系电话   → DB列: contact_phone
-    private String address;       // 供应商地址 → DB列: address
+    private String contact;       // 联系人姓名
+    private String phone;
     private String status;        // active / inactive
-    private Date createTime;
+
+    // 新增字段
+    private String email;         // 邮箱
+    private String address;       // 供应商地址
+    private Integer paymentPeriod; // 结算账期（天），默认30
 }
