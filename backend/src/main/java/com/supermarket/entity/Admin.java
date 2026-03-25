@@ -11,7 +11,7 @@ import java.util.Date;
 @Data
 @TableName("ADMINS")
 public class Admin {
-    @TableId(type = IdType.AUTO)
+    @TableId(value = "admin_id", type = IdType.AUTO)
     private Integer adminId;
     private String username;
     @JsonIgnore

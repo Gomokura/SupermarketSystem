@@ -50,11 +50,20 @@ public class GlobalExceptionHandler {
         return Result.error(e.getCode(), e.getMessage());
     }
 
+    /** 空指针：getMessage() 常为 null，单独提示 */
+    @ExceptionHandler(NullPointerException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public Result<?> handleNullPointer(NullPointerException e) {
+        log.error("空指针异常", e);
+        return Result.error(500, "系统内部错误：空指针（请查看后端日志堆栈）");
+    }
+
     /** 兜底异常 */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<?> handleException(Exception e) {
         log.error("系统异常", e);
-        return Result.error(500, "系统内部错误：" + e.getMessage());
+        String msg = e.getMessage();
+        return Result.error(500, "系统内部错误：" + (msg != null ? msg : e.getClass().getSimpleName()));
     }
 }

@@ -40,6 +40,7 @@ public class Order {
     private Double freight;           // 运费
     private String addressSnapshot;   // 地址快照
     private String source;            // 来源 online/cashier
+    private Integer cashierId;        // 收银员ID（收银台订单）
     private Date deliveredAt;         // 实际到门时间
     private String deliveryFailReason; // 配送失败原因
 

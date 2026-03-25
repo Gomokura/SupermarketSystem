@@ -1,6 +1,7 @@
 package com.supermarket.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -20,5 +21,9 @@ public class Courier {
     private Integer isDisabled;   // 0正常/1禁用
     private Integer todayCount;   // 今日已送单数
     private Integer totalCount;   // 累计配送单数
+    @TableField("total_delivered")
+    private Integer totalDelivered; // 配送成功累计数
+    @TableField("total_failed")
+    private Integer totalFailed;    // 配送失败累计数
     private Date createTime;
 }

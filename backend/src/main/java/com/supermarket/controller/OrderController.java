@@ -163,9 +163,48 @@ public class OrderController {
             CreateOrderRequest.CartItem item = new CreateOrderRequest.CartItem();
             item.setProductId((Integer) raw.get("productId"));
             item.setQuantity((Integer) raw.get("quantity"));
+            if (raw.get("skuId") != null) item.setSkuId((Integer) raw.get("skuId"));
             items.add(item);
         }
 
         return orderService.cashierCreateOrder(userId, items, payMethod, receivedAmount);
+    }
+
+    // ==================== 配送与轨迹 ====================
+
+    /**
+     * 订单配送轨迹
+     * GET /orders/{orderId}/delivery-trace
+     */
+    @GetMapping("/{orderId}/delivery-trace")
+    public Result<?> getDeliveryTrace(
+            @PathVariable Integer orderId,
+            @RequestAttribute(required = false) Integer userId) {
+        return orderService.getDeliveryTrace(orderId, userId);
+    }
+
+    /**
+     * 订单时间线（订单全生命周期节点）
+     * GET /orders/{orderId}/timeline
+     */
+    @GetMapping("/{orderId}/timeline")
+    public Result<?> getOrderTimeline(
+            @PathVariable Integer orderId,
+            @RequestAttribute(required = false) Integer userId) {
+        return orderService.getOrderTimeline(orderId, userId);
+    }
+
+    /**
+     * 管理员指派配送员
+     * PUT /orders/{orderId}/assign-courier
+     * body: { courierId }
+     */
+    @PutMapping("/{orderId}/assign-courier")
+    public Result<?> assignCourier(
+            @PathVariable Integer orderId,
+            @RequestBody Map<String, Object> body,
+            @RequestAttribute Integer userId) {
+        Integer courierId = (Integer) body.get("courierId");
+        return orderService.assignCourier(orderId, courierId, userId);
     }
 }

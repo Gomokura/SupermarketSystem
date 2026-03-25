@@ -18,8 +18,8 @@ public class DeliveryTask {
     private String status;
     private Date assignTime;
     private Date pickupTime;
-    @TableField("DONE_TIME")
-    private Date deliverTime;    // 数据库字段名 DONE_TIME
+    @TableField("done_time")
+    private Date deliverTime;    // 数据库字段名 done_time
     private String failReason;
 
     // 非数据库字段

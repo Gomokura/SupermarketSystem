@@ -7,9 +7,10 @@ spring:
 
   datasource:
     driver-class-name: oracle.jdbc.OracleDriver
-    url: jdbc:oracle:thin:@//localhost:1521/XE
+    # 11g 常用 SID 连接；若仍连不上可用 lsnrctl status 看「服务名」再改回 //host:port/服务名
+    url: jdbc:oracle:thin:@localhost:1521:orcl
     username: system
-    password: 123456
+    password: Liu12345
     hikari:
       connection-timeout: 30000
       maximum-pool-size: 10

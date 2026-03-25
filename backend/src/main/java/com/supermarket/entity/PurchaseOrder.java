@@ -17,12 +17,14 @@ public class PurchaseOrder {
     private Integer operatorId;   // 创建人（管理员ID）
     private String status;        // draft草稿/approved已审批/received已收货/cancelled已取消
     private String poNo;          // 采购单号，数据库字段 PO_NO
-    private Double totalAmount;   // 采购总金额，数据库字段 TOTAL_AMOUNT（原totalCost）
+    private Double totalAmount;   // 采购总金额，数据库字段 TOTAL_AMOUNT
     private String remark;        // 备注
     private Date createTime;
-    private Date completeTime;    // 实际到货时间，数据库字段 COMPLETE_TIME
+    @TableField("arrive_time")
+    private Date completeTime;    // 实际到货时间，映射数据库 arrive_time
 
     // 新增字段
+    @TableField("expected_date")
     private Date expectedDate;    // 预计到货日期
 
     // 非数据库字段

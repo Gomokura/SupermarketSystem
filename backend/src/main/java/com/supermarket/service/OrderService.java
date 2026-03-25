@@ -3,6 +3,7 @@ package com.supermarket.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.supermarket.common.BusinessException;
 import com.supermarket.common.Result;
 import com.supermarket.dto.CreateOrderRequest;
 import com.supermarket.entity.*;
@@ -25,6 +26,8 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
     @Autowired private PaymentMapper paymentMapper;
     @Autowired private AddressMapper addressMapper;
     @Autowired private InventoryLogMapper inventoryLogMapper;
+    @Autowired private CourierMapper courierMapper;
+    @Autowired private DeliveryTaskMapper deliveryTaskMapper;
 
     // ==================== C端 - 订单查询 ====================
 
@@ -439,5 +442,151 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         payment.setStatus("paid");
         payment.setPayTime(new Date());
         paymentMapper.insert(payment);
+    }
+
+    // ==================== 配送与轨迹 ====================
+
+    /**
+     * 订单配送轨迹
+     * 返回配送任务状态节点列表
+     */
+    public Result<?> getDeliveryTrace(Integer orderId, Integer userId) {
+        Order order = this.getById(orderId);
+        if (order == null) throw new BusinessException(404, "订单不存在");
+        if (userId != null && !order.getUserId().equals(userId)
+                && !"SHIPPING".equals(order.getStatus()) && !"COMPLETED".equals(order.getStatus())
+                && !"DELIVERY_FAILED".equals(order.getStatus())) {
+            throw new BusinessException(403, "无权查看");
+        }
+
+        List<Map<String, Object>> trace = new ArrayList<>();
+
+        // 已发货后才显示配送信息
+        if ("SHIPPING".equals(order.getStatus()) || "COMPLETED".equals(order.getStatus())
+                || "DELIVERY_FAILED".equals(order.getStatus())) {
+            LambdaQueryWrapper<DeliveryTask> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(DeliveryTask::getOrderId, orderId);
+            DeliveryTask task = deliveryTaskMapper.selectOne(wrapper);
+
+            if (task != null) {
+                Map<String, Object> traceItem = new LinkedHashMap<>();
+                traceItem.put("status", task.getStatus());
+                traceItem.put("assignTime", task.getAssignTime());
+                traceItem.put("pickupTime", task.getPickupTime());
+                traceItem.put("deliverTime", task.getDeliverTime());
+                traceItem.put("failReason", task.getFailReason());
+
+                // 填充骑手信息
+                Courier courier = courierMapper.selectById(task.getCourierId());
+                if (courier != null) {
+                    traceItem.put("courierName", courier.getCourierName());
+                    traceItem.put("courierPhone", courier.getPhone());
+                }
+                trace.add(traceItem);
+            }
+        }
+
+        return Result.success(trace);
+    }
+
+    /**
+     * 订单时间线
+     * 返回订单全生命周期所有关键节点
+     */
+    public Result<?> getOrderTimeline(Integer orderId, Integer userId) {
+        Order order = this.getById(orderId);
+        if (order == null) throw new BusinessException(404, "订单不存在");
+        if (userId != null && !order.getUserId().equals(userId)) {
+            throw new BusinessException(403, "无权查看");
+        }
+
+        List<Map<String, Object>> timeline = new ArrayList<>();
+
+        // 1. 下单
+        addTimelineNode(timeline, "CREATE", "订单已创建", order.getCreateTime());
+        // 2. 支付
+        if (order.getPayTime() != null) {
+            addTimelineNode(timeline, "PAY", "订单已支付（" + nvl(order.getPayMethod(), "") + "）", order.getPayTime());
+        }
+        // 3. 发货
+        if (order.getShipTime() != null) {
+            addTimelineNode(timeline, "SHIP", "商品已发货", order.getShipTime());
+        }
+        // 4. 配送中
+        LambdaQueryWrapper<DeliveryTask> taskWrapper = new LambdaQueryWrapper<>();
+        taskWrapper.eq(DeliveryTask::getOrderId, orderId);
+        DeliveryTask task = deliveryTaskMapper.selectOne(taskWrapper);
+        if (task != null) {
+            if (task.getPickupTime() != null) {
+                addTimelineNode(timeline, "PICKUP", "骑手已取件，配送中", task.getPickupTime());
+            }
+            if (task.getDeliverTime() != null) {
+                addTimelineNode(timeline, "DELIVER", "商品已送达", task.getDeliverTime());
+            }
+            if ("failed".equals(task.getStatus()) && task.getFailReason() != null) {
+                addTimelineNode(timeline, "FAIL", "配送失败：" + task.getFailReason(), null);
+            }
+        }
+        // 5. 完成
+        if (order.getCompleteTime() != null) {
+            addTimelineNode(timeline, "COMPLETE", "订单已完成", order.getCompleteTime());
+        }
+        // 6. 取消
+        if (order.getCancelTime() != null) {
+            addTimelineNode(timeline, "CANCEL", "订单已取消", order.getCancelTime());
+        }
+        // 7. 退款
+        if ("refunded".equals(order.getStatus())) {
+            addTimelineNode(timeline, "REFUND", "订单已退款", order.getCancelTime());
+        }
+
+        return Result.success(timeline);
+    }
+
+    /**
+     * 管理员指派配送员
+     */
+    @Transactional
+    public Result<?> assignCourier(Integer orderId, Integer courierId, Integer operatorId) {
+        Order order = this.getById(orderId);
+        if (order == null) throw new BusinessException(404, "订单不存在");
+        if (!"SHIPPING".equals(order.getStatus())) throw new BusinessException("只有发货中的订单才能指派配送员");
+        if (courierId == null) throw new BusinessException("配送员ID不能为空");
+
+        Courier courier = courierMapper.selectById(courierId);
+        if (courier == null) throw new BusinessException(404, "配送员不存在");
+        if (1 == courier.getIsDisabled()) throw new BusinessException("该配送员已被禁用");
+
+        // 创建配送任务
+        DeliveryTask task = new DeliveryTask();
+        task.setOrderId(orderId);
+        task.setCourierId(courierId);
+        task.setStatus("pending");
+        task.setAssignTime(new Date());
+        deliveryTaskMapper.insert(task);
+
+        // 更新订单配送员
+        order.setDeliveryPersonId(courierId);
+        this.updateById(order);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("taskId", task.getTaskId());
+        data.put("courierName", courier.getCourierName());
+        data.put("courierPhone", courier.getPhone());
+        return Result.success(data);
+    }
+
+    // ==================== 私有辅助方法 ====================
+
+    private void addTimelineNode(List<Map<String, Object>> timeline, String status, String desc, Date time) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("status", status);
+        node.put("description", desc);
+        node.put("time", time);
+        timeline.add(node);
+    }
+
+    private String nvl(String str, String defaultVal) {
+        return str != null ? str : defaultVal;
     }
 }

@@ -9,10 +9,10 @@ import org.apache.ibatis.annotations.Update;
 public interface CourierMapper extends BaseMapper<Courier> {
 
     /** 配送成功数 +1 */
-    @Update("UPDATE couriers SET total_delivered = total_delivered + 1 WHERE id = #{courierId}")
+    @Update("UPDATE couriers SET total_delivered = total_delivered + 1 WHERE courier_id = #{courierId}")
     void incrementDelivered(Long courierId);
 
     /** 配送失败数 +1 */
-    @Update("UPDATE couriers SET total_failed = total_failed + 1 WHERE id = #{courierId}")
+    @Update("UPDATE couriers SET total_failed = total_failed + 1 WHERE courier_id = #{courierId}")
     void incrementFailed(Long courierId);
 }

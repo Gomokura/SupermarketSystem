@@ -30,6 +30,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "/categories/list",
                         "/banners/list",
                         "/reviews/product/**",
+                        "/courier/tasks",
+                        "/courier/status",
                         "/static/**",
                         "/error"
                 );

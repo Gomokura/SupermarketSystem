@@ -7,9 +7,15 @@ import com.supermarket.common.BusinessException;
 import com.supermarket.common.Result;
 import com.supermarket.entity.AfterSale;
 import com.supermarket.entity.Order;
+import com.supermarket.entity.OrderItem;
+import com.supermarket.entity.Product;
+import com.supermarket.entity.InventoryLog;
 import com.supermarket.entity.User;
 import com.supermarket.mapper.AfterSaleMapper;
 import com.supermarket.mapper.OrderMapper;
+import com.supermarket.mapper.OrderItemMapper;
+import com.supermarket.mapper.ProductMapper;
+import com.supermarket.mapper.InventoryLogMapper;
 import com.supermarket.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,6 +29,9 @@ import java.util.List;
 public class AfterSaleService extends ServiceImpl<AfterSaleMapper, AfterSale> {
 
     @Autowired private OrderMapper orderMapper;
+    @Autowired private OrderItemMapper orderItemMapper;
+    @Autowired private ProductMapper productMapper;
+    @Autowired private InventoryLogMapper inventoryLogMapper;
     @Autowired private UserMapper userMapper;
 
     /** C端：提交售后申请 */
@@ -32,7 +41,7 @@ public class AfterSaleService extends ServiceImpl<AfterSaleMapper, AfterSale> {
         Order order = orderMapper.selectById(afterSale.getOrderId());
         if (order == null) throw new BusinessException(404, "订单不存在");
         if (!order.getUserId().equals(userId)) throw new BusinessException(403, "无权操作");
-        if (!"completed".equals(order.getStatus()) && !"shipped".equals(order.getStatus()))
+        if (!"COMPLETED".equals(order.getStatus()) && !"SHIPPING".equals(order.getStatus()))
             throw new BusinessException("当前订单状态不支持售后");
 
         // 检查是否已有售后申请
@@ -96,8 +105,11 @@ public class AfterSaleService extends ServiceImpl<AfterSaleMapper, AfterSale> {
 
         if ("approve".equals(action)) {
             as.setStatus("approved");
+            as.setHandlerId(1); // TODO: 从上下文获取当前管理员ID
         } else if ("reject".equals(action)) {
             as.setStatus("rejected");
+            as.setRejectReason(remark);
+            as.setHandlerId(1); // TODO: 从上下文获取当前管理员ID
             // 恢复订单状态
             Order order = orderMapper.selectById(as.getOrderId());
             if (order != null) {
@@ -120,15 +132,44 @@ public class AfterSaleService extends ServiceImpl<AfterSaleMapper, AfterSale> {
         AfterSale as = this.getById(afterSaleId);
         if (as == null) throw new BusinessException(404, "售后申请不存在");
         if (!"approved".equals(as.getStatus())) throw new BusinessException("请先审批通过");
-        as.setStatus("completed");
-        this.updateById(as);
 
-        // 更新订单状态为已退款
+        // 回补库存
         Order order = orderMapper.selectById(as.getOrderId());
         if (order != null) {
+            LambdaQueryWrapper<OrderItem> itemWrapper = new LambdaQueryWrapper<>();
+            itemWrapper.eq(OrderItem::getOrderId, order.getOrderId());
+            List<OrderItem> items = orderItemMapper.selectList(itemWrapper);
+
+            for (OrderItem item : items) {
+                Product product = productMapper.selectById(item.getProductId());
+                if (product != null) {
+                    int before = product.getStock() != null ? product.getStock() : 0;
+                    product.setStock(before + item.getQuantity());
+                    product.setSalesCount(Math.max(0, product.getSalesCount() - item.getQuantity()));
+                    productMapper.updateById(product);
+
+                    InventoryLog log = new InventoryLog();
+                    log.setProductId(product.getProductId());
+                    log.setSkuId(item.getSkuId());
+                    log.setLogType("REFUND_IN");
+                    log.setChangeAmount(item.getQuantity());
+                    log.setBalanceAfter(product.getStock());
+                    log.setBeforeStock(before);
+                    log.setAfterStock(product.getStock());
+                    log.setRefId(order.getOrderId());
+                    log.setRemark("售后退款回库，单号：" + order.getOrderNo());
+                    log.setCreateTime(new Date());
+                    inventoryLogMapper.insert(log);
+                }
+            }
+
             order.setStatus("refunded");
+            order.setCancelTime(new Date());
             orderMapper.updateById(order);
         }
+
+        as.setStatus("completed");
+        this.updateById(as);
         return Result.success();
     }
 
