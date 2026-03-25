@@ -16,7 +16,9 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class CouponService extends ServiceImpl<CouponMapper, Coupon> {
@@ -142,5 +144,73 @@ public class CouponService extends ServiceImpl<CouponMapper, Coupon> {
             available.add(uc);
         }
         return Result.success(available);
+    }
+
+    // ==================== B端：批量发券 ====================
+
+    /**
+     * 批量发券：对每个 userId 插入一条 user_coupon（若已存在则跳过）。
+     * 仅操作优惠券发放记录（user_coupons）和 coupons.issued_count，不触碰订单/库存履约流转。
+     */
+    @Transactional
+    public Result<?> batchIssueCoupons(Integer couponId, List<Integer> userIds) {
+        if (couponId == null) throw new BusinessException("couponId不能为空");
+        if (userIds == null || userIds.isEmpty()) throw new BusinessException("userIds不能为空");
+
+        Coupon coupon = this.getById(couponId);
+        if (coupon == null) throw new BusinessException(404, "优惠券不存在");
+        if (!"active".equals(coupon.getStatus())) throw new BusinessException("优惠券已下架");
+
+        Date now = new Date();
+        if (coupon.getStartTime() != null && now.before(coupon.getStartTime())) {
+            throw new BusinessException("优惠券尚未开始");
+        }
+        if (coupon.getEndTime() != null && coupon.getEndTime().before(now)) {
+            throw new BusinessException("优惠券已过期");
+        }
+
+        Integer totalCount = coupon.getTotalCount();
+        int totalLimit = (totalCount != null ? totalCount : -1);
+
+        int issuedCount = coupon.getIssuedCount() != null ? coupon.getIssuedCount() : 0;
+
+        int inserted = 0;
+        int skipped = 0;
+
+        for (Integer userId : userIds) {
+            if (userId == null) continue;
+
+            LambdaQueryWrapper<UserCoupon> check = new LambdaQueryWrapper<>();
+            check.eq(UserCoupon::getUserId, userId).eq(UserCoupon::getCouponId, couponId);
+            if (userCouponMapper.selectCount(check) > 0) {
+                skipped++;
+                continue;
+            }
+
+            // 有总量限制时，发放到上限后停止
+            if (totalLimit > 0 && issuedCount >= totalLimit) {
+                break;
+            }
+
+            UserCoupon uc = new UserCoupon();
+            uc.setUserId(userId);
+            uc.setCouponId(couponId);
+            uc.setStatus("unused");
+            uc.setGetTime(now);
+            userCouponMapper.insert(uc);
+
+            inserted++;
+            issuedCount++;
+        }
+
+        coupon.setIssuedCount(issuedCount);
+        this.updateById(coupon);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("successCount", inserted);
+        data.put("skippedCount", skipped);
+        data.put("requestedCount", userIds.size());
+        data.put("issuedCount", issuedCount);
+        return Result.success(data);
     }
 }

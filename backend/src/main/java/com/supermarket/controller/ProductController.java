@@ -85,6 +85,15 @@ public class ProductController {
         return productService.getCategories();
     }
 
+    /**
+     * 分类列表（兼容前端：GET /products/categories）
+     * 前端原本用这个地址获取分类下拉
+     */
+    @GetMapping("/categories")
+    public Result<?> getCategoriesCompat() {
+        return productService.getCategories();
+    }
+
     // ==================== B端管理接口 ====================
 
     /**
@@ -119,6 +128,18 @@ public class ProductController {
             @PathVariable Integer productId,
             @RequestBody Product product) {
         product.setProductId(productId);
+        return productService.updateProduct(product);
+    }
+
+    /**
+     * 修改商品（兼容前端：PUT /products）
+     * 前端会把 productId 放在请求体里
+     */
+    @PutMapping
+    public Result<?> updateProductCompat(@RequestBody Product product) {
+        if (product == null || product.getProductId() == null) {
+            return Result.error("productId不能为空");
+        }
         return productService.updateProduct(product);
     }
 
@@ -176,6 +197,18 @@ public class ProductController {
     @PostMapping("/categories")
     public Result<?> addCategory(@RequestBody Category category) {
         return productService.addCategory(category);
+    }
+
+    /**
+     * 修改分类（兼容前端：PUT /products/categories）
+     * 前端会把 categoryId 放在请求体里
+     */
+    @PutMapping("/categories")
+    public Result<?> updateCategoryCompat(@RequestBody Category category) {
+        if (category == null || category.getCategoryId() == null) {
+            return Result.error("categoryId不能为空");
+        }
+        return productService.updateCategory(category);
     }
 
     /**

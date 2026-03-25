@@ -82,4 +82,27 @@ public class AuthController {
     public Result<?> courierLogin(@RequestBody LoginRequest request) {
         return authService.courierLogin(request);
     }
+
+    // ==================== 通用：JWT 续期/退出 ====================
+
+    /**
+     * JWT 续期（需要携带有效 token）
+     * POST /auth/refresh
+     */
+    @PostMapping("/refresh")
+    public Result<?> refreshToken(
+            @RequestAttribute Integer userId,
+            @RequestAttribute String username,
+            @RequestAttribute String role) {
+        return authService.refreshToken(userId, username, role);
+    }
+
+    /**
+     * 退出登录（本项目未实现 token 黑名单）
+     * POST /auth/logout
+     */
+    @PostMapping("/logout")
+    public Result<?> logout() {
+        return Result.success("退出成功");
+    }
 }

@@ -45,6 +45,17 @@ public class AdminController {
         return adminService.getStatistics();
     }
 
+    /**
+     * 完整统计看板（B 端）
+     * GET /admin/dashboard?days=30&topN=10
+     */
+    @GetMapping("/dashboard")
+    public Result<?> getDashboard(
+            @RequestParam(defaultValue = "30") Integer days,
+            @RequestParam(defaultValue = "10") Integer topN) {
+        return adminService.getDashboard(days, topN);
+    }
+
     // ==================== 库存管理 ====================
 
     @PostMapping("/inventory/warehousing")

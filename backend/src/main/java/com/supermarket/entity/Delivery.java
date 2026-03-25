@@ -8,26 +8,30 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
-@TableName("DELIVERIES")
+@TableName("DELIVERY_TASKS")
 public class Delivery {
     @TableId(type = IdType.AUTO)
+    @TableField("TASK_ID")
     private Integer deliveryId;
     private Integer orderId;
     private Integer courierId;
+    @TableField(exist = false)
     private String address;
+    @TableField(exist = false)
     private String receiver;
+    @TableField(exist = false)
     private String phone;
-    private String status;        // pending待取件/picking配送中/done已送达/failed配送失败
-    private Date dispatchTime;    // 发货时间（分配配送员时）
-    private Date doneTime;        // 完成时间
-
-    // 新增字段
-    private Date pickupTime;      // 配送员取件时间
-    private String failReason;    // 配送失败原因
-
-    // 非数据库字段
+    private String status;        // ASSIGNED/PICKED_UP/DELIVERED/FAILED
     @TableField(exist = false)
-    private String courierName;   // 配送员姓名（联表）
+    private Date dispatchTime;
+    @TableField("DELIVER_TIME")
+    private Date doneTime;
+    private Date pickupTime;
+    @TableField("FAIL_REASON")
+    private String failReason;
+
     @TableField(exist = false)
-    private String courierPhone;  // 配送员手机（联表）
+    private String courierName;
+    @TableField(exist = false)
+    private String courierPhone;
 }

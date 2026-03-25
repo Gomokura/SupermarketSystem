@@ -31,14 +31,17 @@ public class CartController {
 
     @PutMapping("/update")
     public Result<?> updateCartQuantity(
+            @RequestAttribute Integer userId,
             @RequestParam Integer cartId,
             @RequestParam Integer quantity) {
-        return cartService.updateCartQuantity(cartId, quantity);
+        return cartService.updateCartQuantity(userId, cartId, quantity);
     }
 
     @DeleteMapping("/{cartId}")
-    public Result<?> removeFromCart(@PathVariable Integer cartId) {
-        return cartService.removeFromCart(cartId);
+    public Result<?> removeFromCart(
+            @RequestAttribute Integer userId,
+            @PathVariable Integer cartId) {
+        return cartService.removeFromCart(userId, cartId);
     }
 
     @DeleteMapping("/clear")

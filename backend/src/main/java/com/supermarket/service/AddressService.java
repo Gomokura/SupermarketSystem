@@ -36,6 +36,15 @@ public class AddressService extends ServiceImpl<AddressMapper, Address> {
     }
 
     public Result<?> updateAddress(Address address) {
+        if (address == null || address.getAddressId() == null) {
+            return Result.error("addressId不能为空");
+        }
+        Address existing = this.getById(address.getAddressId());
+        if (existing == null) return Result.error("地址不存在");
+        if (existing.getUserId() == null || !existing.getUserId().equals(address.getUserId())) {
+            return Result.error("无权修改该地址");
+        }
+
         if (address.getIsDefault() != null && address.getIsDefault() == 1) {
             LambdaQueryWrapper<Address> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Address::getUserId, address.getUserId());
@@ -51,7 +60,12 @@ public class AddressService extends ServiceImpl<AddressMapper, Address> {
         return Result.success();
     }
 
-    public Result<?> deleteAddress(Integer addressId) {
+    public Result<?> deleteAddress(Integer addressId, Integer userId) {
+        Address existing = this.getById(addressId);
+        if (existing == null) return Result.error("地址不存在");
+        if (existing.getUserId() == null || !existing.getUserId().equals(userId)) {
+            return Result.error("无权删除该地址");
+        }
         this.removeById(addressId);
         return Result.success();
     }

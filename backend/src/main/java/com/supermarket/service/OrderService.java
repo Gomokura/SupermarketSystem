@@ -22,7 +22,6 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
     @Autowired private CartMapper cartMapper;
     @Autowired private ProductMapper productMapper;
     @Autowired private ProductSkuMapper productSkuMapper;
-    @Autowired private PaymentMapper paymentMapper;
     @Autowired private AddressMapper addressMapper;
     @Autowired private InventoryLogMapper inventoryLogMapper;
 
@@ -190,7 +189,6 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
             order.setStatus("PAID");
             order.setPayTime(new Date());
             orderMapper.updateById(order);
-            insertPayment(order.getOrderId(), order.getPayAmount());
         }
 
         Map<String, Object> data = new HashMap<>();
@@ -213,7 +211,6 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         order.setPayMethod(payMethod);
         order.setPayTime(new Date());
         this.updateById(order);
-        insertPayment(orderId, order.getPayAmount());
         return Result.success("支付成功");
     }
 
@@ -366,8 +363,6 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
                     "收银台出库，单号: " + orderNo, cashierId);
         }
 
-        insertPayment(order.getOrderId(), totalAmount);
-
         double change = receivedAmount != null ? receivedAmount - totalAmount : 0;
         Map<String, Object> data = new HashMap<>();
         data.put("orderId", order.getOrderId());
@@ -431,13 +426,4 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         inventoryLogMapper.insert(log);
     }
 
-    /** 插入支付流水 */
-    private void insertPayment(Integer orderId, Double amount) {
-        Payment payment = new Payment();
-        payment.setOrderId(orderId);
-        payment.setAmount(amount);
-        payment.setStatus("paid");
-        payment.setPayTime(new Date());
-        paymentMapper.insert(payment);
-    }
 }

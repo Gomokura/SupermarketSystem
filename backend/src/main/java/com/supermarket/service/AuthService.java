@@ -224,4 +224,21 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
         data.put("status", courier.getStatus());
         return Result.success(data);
     }
+
+    /**
+     * JWT 续期：基于当前已解析的 token claims 重新签发
+     * 说明：本项目未实现 token 黑名单，所以 logout 仅返回成功。
+     */
+    public Result<?> refreshToken(Integer userId, String username, String role) {
+        if (userId == null || username == null || role == null) {
+            return Result.error("token刷新参数不完整");
+        }
+        String token = jwtConfig.generateToken(userId, username, role);
+        Map<String, Object> data = new HashMap<>();
+        data.put("token", token);
+        data.put("userId", userId);
+        data.put("username", username);
+        data.put("role", role);
+        return Result.success(data);
+    }
 }
