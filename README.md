@@ -176,15 +176,9 @@
 │               ├── Promotions.vue              # 促销管理
 │               └── Finance.vue                 # 财务报表
 │
-└── database/                                   # 数据库脚本
-    ├── 01_tables.sql                           # 创建表结构
-    ├── 02_orders_inventory.sql                 # 订单和库存表
-    ├── 03_sequences_indexes.sql                # 序列和索引
-    ├── 04_init_data.sql                        # 初始化数据
-    ├── 05_cart.sql                             # 购物车表
-    ├── 06_more_data.sql                        # 补充数据
-    ├── 07_promotion_delivery.sql               # 促销和配送表
-    └── 08_additions.sql                        # 附加扩展
+└── database/                                   # 数据库脚本    
+    ├── all_tables.sql               全部数据表
+    └── run_sql.py                                          
 ```
 
 ## 安装部署
@@ -193,15 +187,7 @@
 
 执行 database 目录下的 SQL 脚本：
 
-```bash
-01_tables.sql              # 创建表结构
-02_orders_inventory.sql    # 创建订单和库存表
-03_sequences_indexes.sql   # 创建序列和索引
-04_init_data.sql           # 初始化数据
-05_cart.sql                # 购物车表
-06_more_data.sql           # 补充测试数据
-07_promotion_delivery.sql  # 促销和配送表
-08_additions.sql           # 附加扩展脚本
+all_tables.sql               全部数据表
 ```
 
 ### 2. 后端配置
