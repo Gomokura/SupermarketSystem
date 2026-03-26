@@ -62,6 +62,20 @@ public class OrderController {
         );
     }
 
+    /** 结算预览（不创建订单） */
+    @PostMapping("/preview")
+    public Result<?> previewOrder(
+            @RequestAttribute Integer userId,
+            @RequestBody CreateOrderRequest request) {
+        return orderService.previewOrder(
+                userId,
+                request.getAddressId(),
+                request.getItems(),
+                request.getCouponId(),
+                request.getPointsUsed()
+        );
+    }
+
     /**
      * 支付订单
      * POST /orders/{orderId}/pay
@@ -97,6 +111,14 @@ public class OrderController {
         return orderService.confirmReceipt(orderId, userId);
     }
 
+    /** 订单时间线 */
+    @GetMapping("/{orderId}/timeline")
+    public Result<?> getOrderTimeline(
+            @PathVariable Integer orderId,
+            @RequestAttribute Integer userId) {
+        return orderService.getOrderStatusLogs(orderId, userId, false);
+    }
+
     // ==================== B端管理 ====================
 
     /**
@@ -116,6 +138,14 @@ public class OrderController {
         return orderService.adminGetOrderList(status, orderNo, userId, startDate, endDate, pageNum, pageSize);
     }
 
+    /** 管理后台查看订单时间线 */
+    @GetMapping("/admin/{orderId}/timeline")
+    public Result<?> adminGetOrderTimeline(
+            @PathVariable Integer orderId,
+            @RequestAttribute Integer adminId) {
+        return orderService.getOrderStatusLogs(orderId, adminId, true);
+    }
+
     /**
      * 管理员发货
      * PUT /orders/{orderId}/ship
@@ -125,6 +155,15 @@ public class OrderController {
             @PathVariable Integer orderId,
             @RequestAttribute Integer userId) {
         return orderService.shipOrder(orderId, userId);
+    }
+
+    /** 管理员按订单分配配送员 */
+    @PutMapping("/{orderId}/assign-courier")
+    public Result<?> assignCourier(
+            @PathVariable Integer orderId,
+            @RequestParam Integer courierId,
+            @RequestAttribute Integer adminId) {
+        return orderService.assignCourier(orderId, courierId, adminId);
     }
 
     /**

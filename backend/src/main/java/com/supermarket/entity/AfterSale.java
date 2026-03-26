@@ -12,17 +12,24 @@ import java.util.Date;
 public class AfterSale {
     @TableId(value = "AS_ID", type = IdType.AUTO)
     private Integer afterSaleId;
+    /** 售后单号 */
+    private String asNo;
     private Integer orderId;
     private Integer userId;
-    /** 类型：refund_only仅退款 / return_refund退货退款，数据库字段 AS_TYPE */
+    /** v3: REFUND / EXCHANGE */
     @TableField("AS_TYPE")
     private String asType;
     private String reason;
+    /** 凭证图片URL逗号分隔 */
+    private String images;
+    /** 退哪个订单商品（NULL=整单退） */
+    private Integer itemId;
     private String status;
     private Double refundAmount;
     /** 管理员备注，数据库字段 ADMIN_REMARK */
     @TableField("ADMIN_REMARK")
     private String adminRemark;
+    private Integer handlerId;
     private Date handleTime;
     private Date createTime;
 

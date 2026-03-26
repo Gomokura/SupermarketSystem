@@ -16,6 +16,40 @@ public class AdminController {
     @Autowired
     private AdminService adminService;
 
+    // ==================== 管理员管理 ====================
+
+    @GetMapping("/admins")
+    public Result<?> getAdmins(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword) {
+        return adminService.getAdminList(pageNum, pageSize, keyword);
+    }
+
+    @PostMapping("/admins")
+    public Result<?> createAdmin(
+            @RequestAttribute Integer adminId,
+            @RequestBody Admin admin) {
+        // 权限细分（SUPER_ADMIN 才能创建）在拦截器未做按钮级，这里先按最小可用实现
+        return adminService.createAdmin(admin);
+    }
+
+    @PutMapping("/admins/{targetAdminId}")
+    public Result<?> updateAdmin(
+            @RequestAttribute Integer adminId,
+            @PathVariable Integer targetAdminId,
+            @RequestBody Admin patch) {
+        return adminService.updateAdmin(targetAdminId, patch);
+    }
+
+    @PutMapping("/admins/{targetAdminId}/reset-password")
+    public Result<?> resetPassword(
+            @RequestAttribute Integer adminId,
+            @PathVariable Integer targetAdminId,
+            @RequestParam String newPassword) {
+        return adminService.resetAdminPassword(targetAdminId, newPassword);
+    }
+
     // ==================== 用户管理 ====================
 
     @GetMapping("/users")
@@ -229,5 +263,19 @@ public class AdminController {
             @PathVariable Integer courierId,
             @RequestParam Integer isDisabled) {
         return adminService.updateCourierStatus(courierId, isDisabled);
+    }
+
+    // ==================== 站内信 ====================
+
+    @PostMapping("/messages")
+    public Result<?> sendMessage(
+            @RequestAttribute Integer adminId,
+            @RequestBody Map<String, Object> body) {
+        Integer userId = body.get("userId") != null ? ((Number) body.get("userId")).intValue() : null;
+        String title = (String) body.get("title");
+        String content = (String) body.get("content");
+        String msgType = (String) body.get("msgType");
+        Integer refId = body.get("refId") != null ? ((Number) body.get("refId")).intValue() : null;
+        return adminService.sendMessageToUser(adminId, userId, title, content, msgType, refId);
     }
 }

@@ -39,7 +39,7 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
             if (order != null) {
                 t.setOrderNo(order.getOrderNo());
                 // 地址快照直接显示
-                t.setAddress(order.getAddressSnapshot());
+                t.setAddress(order.getReceiverSnapshot());
             }
         }
         return Result.success(tasks);
@@ -56,6 +56,15 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
         task.setStatus("picking");
         task.setPickupTime(new Date());
         this.updateById(task);
+
+        // 回写订单状态（配送中）
+        Order order = orderMapper.selectById(task.getOrderId());
+        if (order != null && "PENDING_SHIP".equals(order.getStatus())) {
+            order.setStatus("SHIPPING");
+            order.setPickupTime(task.getPickupTime());
+            order.setUpdateTime(new Date());
+            orderMapper.updateById(order);
+        }
         return Result.success();
     }
 
@@ -71,20 +80,19 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
         task.setDeliverTime(new Date());
         this.updateById(task);
 
-        // 更新订单状态为已送达
+        // 更新订单状态为待收货
         Order order = orderMapper.selectById(task.getOrderId());
-        if (order != null && "shipped".equals(order.getStatus())) {
-            order.setStatus("completed");
-            order.setCompleteTime(new Date());
+        if (order != null) {
+            if ("SHIPPING".equals(order.getStatus())) {
+                order.setStatus("PENDING_RECEIVED");
+            }
+            order.setDeliverTime(task.getDeliverTime());
+            order.setUpdateTime(new Date());
             orderMapper.updateById(order);
         }
 
         // 更新骑手累计送达数（使用原子 UPDATE，避免并发问题）
         courierMapper.incrementDelivered(courierId.longValue());
-
-        // 回写 Order 实际到门时间
-        order.setDeliveredAt(new Date());
-        orderMapper.updateById(order);
 
         return Result.success();
     }
@@ -101,11 +109,11 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
         task.setFailReason(failReason);
         this.updateById(task);
 
-        // 回写 Order 失败原因 + 状态
+        // 回写 Order 失败原因 + 状态（不在 v3 状态枚举中，这里只记录 remark，不强行改状态）
         Order order = orderMapper.selectById(task.getOrderId());
         if (order != null) {
-            order.setDeliveryFailReason(failReason);
-            order.setStatus("DELIVERY_FAILED");
+            order.setRemark((order.getRemark() != null ? order.getRemark() + " | " : "") + "配送失败：" + failReason);
+            order.setUpdateTime(new Date());
             orderMapper.updateById(order);
         }
 

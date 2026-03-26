@@ -11,13 +11,18 @@ import java.util.Date;
 public class CashierShift {
     @TableId(type = IdType.AUTO)
     private Integer shiftId;
-    private Integer cashierId;    // 收银员（ADMINS表）
-    private Double startCash;     // 备用金，数据库字段 START_CASH
-    private Double endCash;       // 交班时清点现金，数据库字段 END_CASH
-    private Integer totalOrders;  // 本班总单数
-    private Double cashTotal;     // 现金收款合计
-    private Double simPayTotal;   // 模拟支付合计
+    private Integer cashierId;
+    private Double startCash;
+    private Double endCash;
+    /** v3: total_cash_amount */
+    private Double totalCashAmount;
+    /** v3: total_mock_amount */
+    private Double totalMockAmount;
+    /** v3: total_order_count */
+    private Integer totalOrderCount;
+    private Double cashDiff;
     private Date startTime;
     private Date endTime;
-    private String status;        // open开班中 / closed已交班
+    /** OPEN / CLOSED */
+    private String status;
 }
