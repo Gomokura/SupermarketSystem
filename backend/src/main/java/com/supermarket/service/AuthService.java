@@ -241,4 +241,20 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
         data.put("role", role);
         return Result.success(data);
     }
+
+    /** 收银端按手机号查会员 */
+    public Result<?> getMemberByPhone(String phone) {
+        if (phone == null || phone.isEmpty()) return Result.error("手机号不能为空");
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getPhone, phone);
+        User user = this.getOne(wrapper);
+        if (user == null) return Result.error(404, "会员不存在");
+        Map<String, Object> data = new HashMap<>();
+        data.put("userId", user.getUserId());
+        data.put("nickname", user.getNickname());
+        data.put("phone", user.getPhone().replaceAll("(\\d{3})\\d{4}(\\d{4})", "$1****$2"));
+        data.put("memberLevel", user.getMemberLevel());
+        data.put("points", user.getPoints());
+        return Result.success(data);
+    }
 }

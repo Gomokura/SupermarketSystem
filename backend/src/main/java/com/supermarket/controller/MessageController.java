@@ -35,5 +35,17 @@ public class MessageController {
             @PathVariable Integer msgId) {
         return messageService.markRead(userId, msgId);
     }
+
+    /** 全部已读 */
+    @PutMapping("/read-all")
+    public Result<?> markAllRead(@RequestAttribute Integer userId) {
+        return messageService.markAllRead(userId);
+    }
+
+    /** 未读消息数 */
+    @GetMapping("/unread-count")
+    public Result<?> unreadCount(@RequestAttribute Integer userId) {
+        return messageService.unreadCount(userId);
+    }
 }
 

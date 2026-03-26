@@ -34,5 +34,34 @@ public class PointsService extends ServiceImpl<PointsLogMapper, PointsLog> {
         this.page(page, wrapper);
         return Result.success(page);
     }
+
+    @org.springframework.transaction.annotation.Transactional
+    public Result<?> adminAdjust(Integer adminId, Integer userId, Integer amount, String remark) {
+        User user = userMapper.selectById(userId);
+        if (user == null) return Result.error("用户不存在");
+        int before = user.getPoints() != null ? user.getPoints() : 0;
+        int after = before + amount;
+        if (after < 0) return Result.error("积分不足，无法扣减");
+        user.setPoints(after);
+        userMapper.updateById(user);
+        PointsLog log = new PointsLog();
+        log.setUserId(userId);
+        log.setChangeAmount(amount);
+        log.setBalanceAfter(after);
+        log.setReason("ADMIN_ADJUST");
+        log.setOperatorId(adminId);
+        log.setCreateTime(new java.util.Date());
+        if (remark != null) log.setRefId(null);
+        this.save(log);
+        return Result.success(after);
+    }
+
+    public Result<?> getUserPointsLogs(Integer userId, Integer pageNum, Integer pageSize) {
+        Page<PointsLog> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<PointsLog> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PointsLog::getUserId, userId).orderByDesc(PointsLog::getCreateTime);
+        this.page(page, wrapper);
+        return Result.success(page);
+    }
 }
 

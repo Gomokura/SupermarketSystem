@@ -15,4 +15,7 @@ public class Brand {
     private String description;
     private Integer sortOrder;
     private String status;        // active / inactive
+
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Integer productCount;
 }

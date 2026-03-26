@@ -83,6 +83,14 @@ public class AuthController {
         return authService.courierLogin(request);
     }
 
+    // ==================== 收银端 ====================
+
+    /** 收银端按手机号查询会员信息 GET /auth/cashier/member?phone=xxx */
+    @GetMapping("/cashier/member")
+    public Result<?> getMemberByPhone(@RequestParam String phone) {
+        return authService.getMemberByPhone(phone);
+    }
+
     // ==================== 通用：JWT 续期/退出 ====================
 
     /**

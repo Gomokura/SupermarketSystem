@@ -10,6 +10,8 @@ import com.supermarket.mapper.MessageMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class MessageService extends ServiceImpl<MessageMapper, Message> {
 
@@ -35,6 +37,24 @@ public class MessageService extends ServiceImpl<MessageMapper, Message> {
         msg.setIsRead(1);
         this.updateById(msg);
         return Result.success();
+    }
+
+    @Transactional
+    public Result<?> markAllRead(Integer userId) {
+        LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Message::getUserId, userId).eq(Message::getIsRead, 0);
+        List<Message> unread = this.list(wrapper);
+        for (Message msg : unread) {
+            msg.setIsRead(1);
+            this.updateById(msg);
+        }
+        return Result.success();
+    }
+
+    public Result<?> unreadCount(Integer userId) {
+        LambdaQueryWrapper<Message> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Message::getUserId, userId).eq(Message::getIsRead, 0);
+        return Result.success(this.count(wrapper));
     }
 }
 
