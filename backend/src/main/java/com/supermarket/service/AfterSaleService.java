@@ -32,7 +32,7 @@ public class AfterSaleService extends ServiceImpl<AfterSaleMapper, AfterSale> {
         Order order = orderMapper.selectById(afterSale.getOrderId());
         if (order == null) throw new BusinessException(404, "订单不存在");
         if (!order.getUserId().equals(userId)) throw new BusinessException(403, "无权操作");
-        if (!"completed".equals(order.getStatus()) && !"shipped".equals(order.getStatus()))
+        if (!"COMPLETED".equals(order.getStatus()) && !"SHIPPING".equals(order.getStatus()))
             throw new BusinessException("当前订单状态不支持售后");
 
         // 检查是否已有售后申请
@@ -101,7 +101,7 @@ public class AfterSaleService extends ServiceImpl<AfterSaleMapper, AfterSale> {
             // 恢复订单状态
             Order order = orderMapper.selectById(as.getOrderId());
             if (order != null) {
-                order.setStatus("completed");
+                order.setStatus("COMPLETED");
                 orderMapper.updateById(order);
             }
         } else {

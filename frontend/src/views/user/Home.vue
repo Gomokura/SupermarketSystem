@@ -12,12 +12,13 @@
       <template #header>
         <div class="section-header">
           <span class="section-title">🔥 限时秒杀</span>
+          <el-button link type="primary" @click="$router.push('/seckill')">查看全部</el-button>
         </div>
       </template>
       <el-row :gutter="16">
-        <el-col :span="6" v-for="sp in seckillProducts" :key="sp.id">
+        <el-col :span="6" v-for="sp in seckillProducts" :key="sp.seckillProductId">
           <el-card shadow="hover" class="product-card" @click="goToProduct(sp.productId)">
-            <img :src="sp.imageUrl" class="product-img" />
+            <img :src="sp.coverImage || sp.imageUrl" class="product-img" />
             <div class="product-name">{{ sp.productName }}</div>
             <div class="seckill-price">
               <span class="price-tag">￥{{ sp.seckillPrice }}</span>
@@ -96,7 +97,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { bannerAPI, productAPI, seckillAPI, cartAPI } from '@/api'
@@ -107,14 +108,7 @@ const hotProducts = ref([])
 const newProducts = ref([])
 const recommendedProducts = ref([])
 const seckillActivities = ref([])
-
-const seckillProducts = computed(() => {
-  const products = []
-  seckillActivities.value.forEach(a => {
-    if (a.products) products.push(...a.products.slice(0, 2))
-  })
-  return products.slice(0, 4)
-})
+const seckillProducts = ref([])
 
 onMounted(() => {
   loadBanners()
@@ -154,15 +148,27 @@ const loadRecommended = async () => {
 
 const loadSeckill = async () => {
   try {
-    const res = await seckillAPI.getActive()
-    seckillActivities.value = res.data || []
+    const res = await seckillAPI.getList({ state: 'running', pageNum: 1, pageSize: 1 })
+    const activities = res.data?.records || res.data || []
+    seckillActivities.value = activities
+    // 取第一个进行中活动的商品
+    if (activities.length > 0) {
+      const prodRes = await seckillAPI.getActivityProducts(activities[0].seckillId)
+      seckillProducts.value = (prodRes.data || []).slice(0, 4)
+    }
   } catch (e) { console.error(e) }
 }
 
 const goToProduct = (id) => router.push(`/products/${id}`)
 
 const handleBannerClick = (banner) => {
-  if (banner.linkUrl) window.open(banner.linkUrl, '_blank')
+  if (banner.linkType === 'product' && banner.linkTarget) {
+    router.push(`/products/${banner.linkTarget}`)
+  } else if (banner.linkType === 'category' && banner.linkTarget) {
+    router.push(`/products?categoryId=${banner.linkTarget}`)
+  } else if (banner.linkType === 'activity') {
+    router.push('/seckill')
+  }
 }
 
 const addToCart = async (product) => {

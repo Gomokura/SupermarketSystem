@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.supermarket.common.Result;
 import com.supermarket.dto.CreateOrderRequest;
 import com.supermarket.entity.*;
+import com.supermarket.common.BusinessException;
 import com.supermarket.mapper.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 @Service
+@Transactional(rollbackFor = Exception.class)
 public class OrderService extends ServiceImpl<OrderMapper, Order> {
 
     @Autowired private OrderMapper orderMapper;
@@ -67,7 +69,8 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
     @Transactional
     public Result<?> createOrder(Integer userId, Integer addressId, String paymentMethod,
                                  List<CreateOrderRequest.CartItem> cartItems,
-                                 Integer couponId, Integer pointsUsed, String remark) {
+                                 Integer couponId, Integer pointsUsed, String remark,
+                                 String deliveryTimeSlot) {
         // 1. 校验收货地址
         Address address = addressMapper.selectById(addressId);
         if (address == null || !address.getUserId().equals(userId)) return Result.error("收货地址不存在");
@@ -125,6 +128,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         order.setCreateTime(new Date());
         if (couponId != null) order.setCouponId(couponId);
         if (pointsUsed != null) order.setPointsUsed(pointsUsed);
+        if (deliveryTimeSlot != null) order.setDeliveryTimeSlot(deliveryTimeSlot);
         orderMapper.insert(order);
 
         // 4. 逐项插入订单明细 + 扣库存 + 写流水
@@ -150,19 +154,20 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
             orderItem.setSpecName(skuName);
             orderItemMapper.insert(orderItem);
 
-            // ✅ 扣库存
+            // ✅ 扣库存（同时扣 SKU 和主表，并增加销量）
             if (sku != null) {
-                // 有 SKU：优先扣 SKU 独立库存
+                // 有 SKU：扣 SKU 独立库存
                 int newSkuStock = sku.getStock() - item.getQuantity();
                 sku.setStock(newSkuStock);
                 productSkuMapper.updateById(sku);
 
-                // 同步汇总主表 stock（减少对应数量）
+                // 同步扣减主表总库存
                 product.setStock(product.getStock() - item.getQuantity());
             } else {
                 // 无 SKU：只扣主表
                 product.setStock(product.getStock() - item.getQuantity());
             }
+            // 增加销量
             product.setSalesCount(product.getSalesCount() + item.getQuantity());
             productMapper.updateById(product);
 
@@ -259,15 +264,41 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         return Result.success(this.page(new Page<>(pageNum, pageSize), wrapper));
     }
 
-    /** 管理员发货（paid→shipped） */
-    public Result<?> shipOrder(Integer orderId, Integer operatorId) {
+    /**
+     * 管理员发货（带快递信息）
+     * ✅ 问题②：已增加快递公司和运单号参数
+     */
+    public Result<?> shipOrder(Integer orderId, String company, String trackingNo) {
         Order order = this.getById(orderId);
         if (order == null) return Result.error("订单不存在");
         if (!"PAID".equals(order.getStatus())) return Result.error("只有已支付订单才能发货");
+
+        order.setExpressCompany(company);
+        order.setExpressNo(trackingNo);
         order.setStatus("SHIPPING");
         order.setShipTime(new Date());
+
         this.updateById(order);
         return Result.success("发货成功");
+    }
+
+    /**
+     * 修改订单地址（仅待发货状态可修改）
+     * ✅ 新增方法，用于 B-20 接口
+     */
+    @Transactional
+    public Result<?> updateOrderAddress(Integer orderId, String name, String phone, String address) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) throw new BusinessException(404, "订单不存在");
+        // 根据业务，待发货状态可修改；此处假设状态为 "PAID" 或 "PENDING_SHIP"
+        if (!"PAID".equals(order.getStatus())) {
+            throw new BusinessException(400, "当前状态不可修改收货地址");
+        }
+
+        // 更新收货人快照
+        order.setReceiverSnapshot(name + " " + phone + " " + address);
+        orderMapper.updateById(order);
+        return Result.success("修改成功");
     }
 
     /** 管理员强制取消（✅ 同步退还库存） */
@@ -377,7 +408,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
 
     /**
      * 退还库存（取消订单时调用）
-     * ✅ 优先退还 SKU 库存，再同步主表
+     * ✅ 优先退还 SKU 库存，再同步主表，同时回滚销量
      */
     private void restoreStock(Order order, Integer operatorId) {
         LambdaQueryWrapper<OrderItem> wrapper = new LambdaQueryWrapper<>();
@@ -398,6 +429,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
             } else {
                 product.setStock(product.getStock() + item.getQuantity());
             }
+            // 回滚销量（防止负数）
             product.setSalesCount(Math.max(0, product.getSalesCount() - item.getQuantity()));
             productMapper.updateById(product);
 
@@ -426,4 +458,50 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         inventoryLogMapper.insert(log);
     }
 
+    /** C-46 再次购买 */
+    @Transactional
+    public Result<?> reorder(Integer orderId, Integer userId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null || !order.getUserId().equals(userId))
+            throw new BusinessException(404, "订单不存在");
+
+        List<OrderItem> items = orderItemMapper.selectList(
+                new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, orderId));
+
+        int added = 0, skipped = 0;
+        for (OrderItem item : items) {
+            Product p = productMapper.selectById(item.getProductId());
+            // ✅ 问题①：将 "on" 改为 "active"
+            if (p == null || !"active".equals(p.getStatus())) { skipped++; continue; }
+
+            // 查找购物车中是否已有该商品+规格
+            LambdaQueryWrapper<Cart> cw = new LambdaQueryWrapper<Cart>()
+                    .eq(Cart::getUserId, userId)
+                    .eq(Cart::getProductId, item.getProductId());
+            if (item.getSkuId() != null) cw.eq(Cart::getSkuId, item.getSkuId());
+            else                          cw.isNull(Cart::getSkuId);
+
+            Cart existing = cartMapper.selectOne(cw);
+            if (existing != null) {
+                existing.setQuantity(existing.getQuantity() + item.getQuantity());
+                cartMapper.updateById(existing);
+            } else {
+                Cart cart = new Cart();
+                cart.setUserId(userId);
+                cart.setProductId(item.getProductId());
+                cart.setSkuId(item.getSkuId());
+                cart.setQuantity(item.getQuantity());
+                cart.setIsChecked(1);
+                cart.setAddTime(new Date());
+                cartMapper.insert(cart);
+            }
+            added++;
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("added", added);
+        result.put("skipped", skipped);
+        result.put("message", added + "件商品已加入购物车" + (skipped > 0 ? "，" + skipped + "件已下架商品跳过" : ""));
+        return Result.success(result);
+    }
 }

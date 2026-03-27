@@ -34,8 +34,7 @@ public class AdminService {
     @Autowired private UserCouponMapper userCouponMapper;
     @Autowired private PointsLogMapper pointsLogMapper;
     @Autowired private CouponMapper couponMapper;
-
-    // ==================== 用户管理 ====================
+    @Autowired private AfterSaleMapper afterSaleMapper;    // ==================== 用户管理 ====================
 
     public Result<?> getUserList(Integer pageNum, Integer pageSize, String keyword) {
         Page<User> page = new Page<>(pageNum, pageSize);
@@ -94,6 +93,19 @@ public class AdminService {
         double todayRevenue = todayPaid.stream()
             .mapToDouble(o -> o.getPayAmount() != null ? o.getPayAmount() : 0)
             .sum();
+        long pendingShipCount = orderMapper.selectCount(
+                new LambdaQueryWrapper<Order>().eq(Order::getStatus, "PENDING_SHIP"));
+        long pendingRefundCount = afterSaleMapper.selectCount(
+                new LambdaQueryWrapper<com.supermarket.entity.AfterSale>()
+                        .eq(com.supermarket.entity.AfterSale::getStatus, "pending"));
+        long pendingPurchaseCount = purchaseOrderMapper.selectCount(
+                new LambdaQueryWrapper<PurchaseOrder>()
+                        .in(PurchaseOrder::getStatus, "draft", "pending_approve"));
+        long lowStockCount = productMapper.selectCount(
+                new LambdaQueryWrapper<Product>()
+                        .apply("stock < stock_warning")
+                        .eq(Product::getIsDeleted, 0)
+                        .eq(Product::getStatus, "active"));
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("userCount", userCount);
@@ -101,6 +113,10 @@ public class AdminService {
         data.put("orderCount", orderCount);
         data.put("todayOrder", todayOrder);
         data.put("todayRevenue", Math.round(todayRevenue * 100.0) / 100.0);
+        data.put("pendingShipCount",     pendingShipCount);
+        data.put("pendingRefundCount",   pendingRefundCount);
+        data.put("pendingPurchaseCount", pendingPurchaseCount);
+        data.put("lowStockCount",        lowStockCount);
         return Result.success(data);
     }
 
@@ -165,10 +181,11 @@ public class AdminService {
 
     // ==================== 配送管理 ====================
 
-    public Result<?> getDeliveryList(Integer pageNum, Integer pageSize, String status) {
+    public Result<?> getDeliveryList(Integer pageNum, Integer pageSize, String status, Integer courierId) {
         Page<Delivery> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<Delivery> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(status)) wrapper.eq(Delivery::getStatus, status);
+        if (courierId != null) wrapper.eq(Delivery::getCourierId, courierId);
         wrapper.orderByDesc(Delivery::getDeliveryId);
         deliveryMapper.selectPage(page, wrapper);
 
@@ -202,6 +219,22 @@ public class AdminService {
         if ("DELIVERED".equals(status)) delivery.setDoneTime(new Date());
         deliveryMapper.updateById(delivery);
         return Result.success();
+    }
+
+    // ==================== 订单管理 ====================
+
+    /** B-19 填写快递信息并发货 */
+    @Transactional
+    public Result<?> shipOrder(Integer orderId, String company, String trackingNo) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) throw new BusinessException(404, "订单不存在");
+        if (!"PAID".equals(order.getStatus())) throw new BusinessException("只有已支付订单才能发货");
+        order.setExpressCompany(company);
+        order.setExpressNo(trackingNo);
+        order.setStatus("SHIPPING");
+        order.setShipTime(new Date());
+        orderMapper.updateById(order);
+        return Result.success("发货成功");
     }
 
     // ==================== 促销管理 ====================
@@ -728,10 +761,25 @@ public class AdminService {
     }
 
     @Transactional
+    public Result<?> createCourier(Courier courier) {
+        if (!StringUtils.hasText(courier.getPhone())) throw new BusinessException("手机号不能为空");
+        if (!StringUtils.hasText(courier.getPassword())) throw new BusinessException("密码不能为空");
+        LambdaQueryWrapper<Courier> check = new LambdaQueryWrapper<>();
+        check.eq(Courier::getPhone, courier.getPhone());
+        if (courierMapper.selectOne(check) != null) throw new BusinessException("手机号已存在");
+        courier.setPassword(org.springframework.util.DigestUtils.md5DigestAsHex(
+                courier.getPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        courier.setStatus("active");
+        courier.setCreateTime(new Date());
+        courierMapper.insert(courier);
+        return Result.success(courier.getCourierId());
+    }
+
+    @Transactional
     public Result<?> updateCourierStatus(Integer courierId, Integer isDisabled) {
         Courier courier = courierMapper.selectById(courierId);
         if (courier == null) throw new BusinessException(404, "骑手不存在");
-        courier.setIsDisabled(isDisabled);
+        courier.setStatus(isDisabled != null && isDisabled == 1 ? "inactive" : "active");
         courierMapper.updateById(courier);
         return Result.success();
     }

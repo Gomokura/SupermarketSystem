@@ -142,10 +142,6 @@ public class SeckillService extends ServiceImpl<SeckillActivityModelMapper, Seck
             return Result.success(mapped);
         }
 
-        if (rows == null || rows.isEmpty()) {
-            return Result.success(Collections.emptyList());
-        }
-
         Set<Integer> productIds = new HashSet<>();
         for (SeckillActivityProductModel r : rows) {
             if (r.getProductId() != null) productIds.add(r.getProductId());

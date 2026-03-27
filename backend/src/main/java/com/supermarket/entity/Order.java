@@ -39,9 +39,14 @@ public class Order {
     private Date createTime;          // 下单时间
     private Double freight;           // 运费
     private String addressSnapshot;   // 地址快照
+    private String receiverSnapshot;    // 收货人信息快照（receiver_snapshot）
+    private String expressCompany;      // 快递公司（express_company）
+    private String expressNo;           // 快递单号（express_no）
     private String source;            // 来源 online/cashier
-    private Date deliveredAt;         // 实际到门时间
-    private String deliveryFailReason; // 配送失败原因
+    private String deliveryTimeSlot;   // 期望配送时间段（delivery_time_slot）
+    private Date pickupTime;          // 配送员取件时间
+    private Date deliverTime;         // 送达时间
+    private Date updateTime;          // 更新时间
 
     // 非数据库字段
     @TableField(exist = false)

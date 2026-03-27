@@ -58,7 +58,8 @@ public class OrderController {
                 request.getItems(),
                 request.getCouponId(),
                 request.getPointsUsed(),
-                request.getRemark()
+                request.getRemark(),
+                request.getDeliveryTimeSlot()
         );
     }
 
@@ -111,20 +112,20 @@ public class OrderController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "20") Integer pageSize,
-            @RequestAttribute Integer adminId) {
+            @RequestParam(defaultValue = "20") Integer pageSize) {
         return orderService.adminGetOrderList(status, orderNo, userId, startDate, endDate, pageNum, pageSize);
     }
 
     /**
-     * 管理员发货
+     * 管理员发货（带快递信息）
      * PUT /orders/{orderId}/ship
+     * body: { "company": "顺丰", "trackingNo": "SF123" }
      */
     @PutMapping("/{orderId}/ship")
     public Result<?> shipOrder(
             @PathVariable Integer orderId,
-            @RequestAttribute Integer userId) {
-        return orderService.shipOrder(orderId, userId);
+            @RequestBody Map<String, String> body) {
+        return orderService.shipOrder(orderId, body.get("company"), body.get("trackingNo"));
     }
 
     /**
@@ -142,7 +143,13 @@ public class OrderController {
     }
 
     // ==================== 收银台端 ====================
-
+    /** C-46 再次购买：将历史订单商品加入购物车 */
+    @PostMapping("/{orderId}/reorder")
+    public Result<?> reorder(
+            @PathVariable Integer orderId,
+            @RequestAttribute Integer userId) {
+        return orderService.reorder(orderId, userId);
+    }
     /**
      * 收银台快速下单（扫码/手动录入）
      * POST /orders/cashier
@@ -157,6 +164,7 @@ public class OrderController {
                 ? ((Number) body.get("receivedAmount")).doubleValue() : null;
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rawItems = (List<Map<String, Object>>) body.get("items");
+        if (rawItems == null || rawItems.isEmpty()) return Result.error("items不能为空");
 
         List<CreateOrderRequest.CartItem> items = new java.util.ArrayList<>();
         for (Map<String, Object> raw : rawItems) {

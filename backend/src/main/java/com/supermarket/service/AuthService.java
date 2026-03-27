@@ -44,13 +44,13 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
             return Result.error("用户不存在");
         }
 
+        if ("banned".equals(user.getStatus())) {
+            return Result.error("账号已被封禁" + (user.getBanReason() != null ? "：" + user.getBanReason() : ""));
+        }
+
         String md5Password = DigestUtils.md5DigestAsHex(request.getPassword().getBytes(StandardCharsets.UTF_8));
         if (!md5Password.equals(user.getPassword())) {
             return Result.error("密码错误");
-        }
-
-        if ("banned".equals(user.getStatus())) {
-            return Result.error("账号已被封禁" + (user.getBanReason() != null ? "：" + user.getBanReason() : ""));
         }
 
         String token = jwtConfig.generateToken(user.getUserId(), user.getUsername(), "user");
@@ -210,7 +210,7 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
             return Result.error("密码错误");
         }
 
-        if (courier.getIsDisabled() != null && courier.getIsDisabled() == 1) {
+        if ("inactive".equals(courier.getStatus())) {
             return Result.error("账号已被禁用");
         }
 

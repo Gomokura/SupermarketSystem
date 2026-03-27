@@ -30,6 +30,7 @@
 import { reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { authAPI } from '@/api'
 
 const userStore = useUserStore()
 const userForm = reactive({
@@ -44,7 +45,16 @@ onMounted(() => {
   Object.assign(userForm, userStore.userInfo)
 })
 
-const saveProfile = () => {
-  ElMessage.success('保存成功')
+const saveProfile = async () => {
+  try {
+    await authAPI.updateUserInfo({
+      realName: userForm.realName,
+      phone: userForm.phone
+    })
+    userStore.setUserInfo({ ...userStore.userInfo, realName: userForm.realName, phone: userForm.phone })
+    ElMessage.success('保存成功')
+  } catch (error) {
+    console.error(error)
+  }
 }
 </script>

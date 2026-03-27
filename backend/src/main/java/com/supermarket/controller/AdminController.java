@@ -3,6 +3,7 @@ package com.supermarket.controller;
 import com.supermarket.common.Result;
 import com.supermarket.entity.*;
 import com.supermarket.service.AdminService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +16,9 @@ public class AdminController {
 
     @Autowired
     private AdminService adminService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     // ==================== 用户管理 ====================
 
@@ -56,6 +60,13 @@ public class AdminController {
         return adminService.getDashboard(days, topN);
     }
 
+    /** D-08 商品销售排行榜 */
+    @GetMapping("/dashboard/top-products")
+    public Result<?> topProducts(
+            @RequestParam(required = false) Integer limit) {
+        return adminService.getTopProducts(limit);
+    }
+
     // ==================== 库存管理 ====================
 
     @PostMapping("/inventory/warehousing")
@@ -91,8 +102,9 @@ public class AdminController {
     public Result<?> getDeliveryList(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) String status) {
-        return adminService.getDeliveryList(pageNum, pageSize, status);
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Integer courierId) {
+        return adminService.getDeliveryList(pageNum, pageSize, status, courierId);
     }
 
     @PutMapping("/deliveries/{deliveryId}/assign")
@@ -107,6 +119,32 @@ public class AdminController {
             @PathVariable Integer deliveryId,
             @RequestParam String status) {
         return adminService.updateDeliveryStatus(deliveryId, status);
+    }
+
+    // ==================== 订单管理 ====================
+
+    /** B-19 填写快递信息（发货） */
+    @PutMapping("/orders/{id}/shipping")
+    public Result<?> shipOrder(
+            @PathVariable Integer id,
+            @RequestBody Map<String, String> body) {
+        return adminService.shipOrder(
+                id,
+                body.get("company"),
+                body.get("trackingNo"));
+    }
+
+    /** B-20 修改订单地址（仅待发货） */
+    @PutMapping("/orders/{id}/address")
+    public Result<?> updateOrderAddress(
+            @PathVariable Integer id,
+            @RequestBody Map<String, String> body) {
+
+        return adminService.updateOrderAddress(
+                id,
+                body.get("name"),
+                body.get("phone"),
+                body.get("address"));
     }
 
     // ==================== 促销管理 ====================
@@ -175,13 +213,15 @@ public class AdminController {
     public Result<?> createPurchaseOrder(
             @RequestBody Map<String, Object> body,
             @RequestAttribute Integer userId) {
-        // body: { "order": {...}, "items": [...] }
-        // 直接用 Jackson 转换
-        com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
-        PurchaseOrder order = om.convertValue(body.get("order"), PurchaseOrder.class);
+
+        PurchaseOrder order = objectMapper.convertValue(body.get("order"), PurchaseOrder.class);
         order.setOperatorId(userId);
-        List<PurchaseOrderItem> items = om.convertValue(body.get("items"),
-            om.getTypeFactory().constructCollectionType(List.class, PurchaseOrderItem.class));
+
+        List<PurchaseOrderItem> items = objectMapper.convertValue(
+                body.get("items"),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, PurchaseOrderItem.class)
+        );
+
         return adminService.createPurchaseOrder(order, items);
     }
 
@@ -222,6 +262,11 @@ public class AdminController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         return adminService.getCourierList(pageNum, pageSize);
+    }
+
+    @PostMapping("/couriers")
+    public Result<?> createCourier(@RequestBody Courier courier) {
+        return adminService.createCourier(courier);
     }
 
     @PutMapping("/couriers/{courierId}/status")

@@ -2,6 +2,8 @@ package com.supermarket.interceptor;
 
 import com.supermarket.common.Result;
 import com.supermarket.config.JwtConfig;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,7 +11,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 
 @Component
@@ -28,17 +29,16 @@ public class JwtInterceptor implements HandlerInterceptor {
         }
 
         token = token.substring(7);
-        
-        try {
-            if (jwtConfig.isTokenExpired(token)) {
-                sendUnauthorizedResponse(response, "token已过期");
-                return false;
-            }
 
-            request.setAttribute("userId", jwtConfig.getUserIdFromToken(token));
-            request.setAttribute("username", jwtConfig.getUsernameFromToken(token));
-            request.setAttribute("role", jwtConfig.getRoleFromToken(token));
+        try {
+            Claims claims = jwtConfig.parseToken(token);
+            request.setAttribute("userId", claims.get("userId", Integer.class));
+            request.setAttribute("username", claims.getSubject());
+            request.setAttribute("role", claims.get("role", String.class));
             return enforceRoleIfNeeded(request, response);
+        } catch (ExpiredJwtException e) {
+            sendUnauthorizedResponse(response, "token已过期");
+            return false;
         } catch (Exception e) {
             sendUnauthorizedResponse(response, "token解析失败");
             return false;
@@ -93,6 +93,7 @@ public class JwtInterceptor implements HandlerInterceptor {
                 path.startsWith("/banners/admin/") ||
                 path.startsWith("/reviews/admin/") ||
                 path.startsWith("/coupons/admin/") ||
+                path.startsWith("/stocktake") ||
                 // 产品信息维护（B端：非 GET 都认为是“后台操作”）
                 (path.startsWith("/products") && !"GET".equalsIgnoreCase(method) && (
                         path.equals("/products")

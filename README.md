@@ -98,7 +98,7 @@
 8. **数据看板**: ECharts 销售趋势、商品排行、分类占比等图表
 9. **多角色权限**: 超级管理员/店长/商品专员/财务/客服/仓管/收银员/配送员
 
-## 后端 API 总览（17 个 Controller，全部已实现）
+## 后端 API 总览（21 个 Controller，全部已实现）
 
 | Controller | 路径前缀 | 说明 |
 |-----------|---------|------|
@@ -109,16 +109,21 @@
 | AddressController | `/addresses` | 收货地址管理 |
 | AfterSaleController | `/after-sales` | 售后申请与审核 |
 | ReviewController | `/reviews` | 评价提交与管理 |
-| CouponController | `/coupons` | 领取、使用、管理 |
+| CouponController | `/coupons` | 领取、使用、管理、批量发券 |
 | BannerController | `/banners` | 轮播图管理 |
 | BrandController | `/brands` | 品牌管理 |
-| SeckillController | `/seckill` | 秒杀活动管理 |
+| SeckillController | `/seckill` | 秒杀活动C端展示与B端管理 |
 | MessageController | `/messages` | 站内消息 |
-| PointsController | `/users/points-logs` | 积分流水 |
-| CashierController | `/cashier` | 开班/交班/商品搜索 |
+| PointsController | `/points` | 积分余额与流水 |
+| FavoriteController | `/favorites` | 商品收藏 |
+| PromotionController | `/promotions` | 促销活动管理 |
+| SupplierController | `/suppliers` | 供应商管理 |
+| PurchaseController | `/purchase` | 采购单管理 |
+| WarehouseController | `/warehouse` | 库存总览、报损登记、库存流水 |
+| CashierController | `/cashier` | 开班/交班 |
 | CourierController | `/courier` | 配送员任务管理 |
-| StocktakeController | `/admin/stocktake` | 库存盘点 |
-| AdminController | `/admin` | 用户/订单/库存/采购/统计/管理员/报损等 |
+| StocktakeController | `/stocktake` | 库存盘点 |
+| AdminController | `/admin` | 用户/订单/库存入出/统计/配送员/审计日志 |
 
 ## 项目结构
 
@@ -130,10 +135,10 @@ SupermarketSystem/
 │   └── src/main/java/com/supermarket/
 │       ├── common/
 │       ├── config/
-│       ├── controller/                         # 17个 Controller
-│       ├── entity/                             # 28个实体类
-│       ├── mapper/                             # 28个 Mapper
-│       └── service/                            # 13个 Service
+│       ├── controller/                         # 21个 Controller
+│       ├── entity/                             # 30+ 个实体类
+│       ├── mapper/                             # 30+ 个 Mapper
+│       └── service/                            # 20+ 个 Service
 │
 ├── frontend/
 │   ├── package.json
@@ -146,35 +151,38 @@ SupermarketSystem/
 │       └── views/
 │           ├── Login.vue
 │           ├── Layout.vue
-│           ├── user/                           # 顾客端（10个已有，5个待开发）
-│           │   ├── Home.vue
-│           │   ├── Products.vue
-│           │   ├── Cart.vue
-│           │   ├── Checkout.vue
-│           │   ├── Orders.vue
-│           │   ├── OrderDetail.vue
-│           │   ├── Address.vue
-│           │   ├── Profile.vue
-│           │   ├── ProductDetail.vue           # 待开发（组长A）
+│           ├── user/                           # 顾客端
+│           │   ├── Home.vue                    # 已完成（组长A）
+│           │   ├── Products.vue                # 已完成（组长A）
+│           │   ├── ProductDetail.vue           # 已完成（组长A）
+│           │   ├── Seckill.vue                 # 已完成（组长A）
+│           │   ├── Cart.vue                    # 待完善（成员B）
+│           │   ├── Checkout.vue                # 已完成（组长A）
+│           │   ├── Orders.vue                  # 待完善（成员B）
+│           │   ├── OrderDetail.vue             # 待完善（成员B）
 │           │   ├── AfterSale.vue               # 待开发（成员B）
 │           │   ├── Review.vue                  # 待开发（成员B）
+│           │   ├── Favorites.vue               # 待开发（成员B）
+│           │   ├── Address.vue                 # 待完善（成员C）
+│           │   ├── Profile.vue                 # 待完善（成员C）
 │           │   ├── Coupons.vue                 # 待开发（成员C）
 │           │   ├── PointsLog.vue               # 待开发（成员C）
 │           │   └── Messages.vue                # 待开发（成员C）
-│           ├── admin/                          # 管理后台（10个已有，11个待开发）
-│           │   ├── Layout.vue
-│           │   ├── Dashboard.vue
-│           │   ├── Products.vue
-│           │   ├── Categories.vue
-│           │   ├── Users.vue
-│           │   ├── Orders.vue
-│           │   ├── Inventory.vue
-│           │   ├── Deliveries.vue
-│           │   ├── Promotions.vue
-│           │   ├── Finance.vue
+│           ├── admin/                          # 管理后台
+│           │   ├── Layout.vue                  # 待完善（成员D）
+│           │   ├── Dashboard.vue               # 待完善（成员E）
+│           │   ├── Products.vue                # 已有
+│           │   ├── Categories.vue              # 已有
+│           │   ├── Users.vue                   # 已有
+│           │   ├── Orders.vue                  # 待完善（成员D）
+│           │   ├── Inventory.vue               # 已有
+│           │   ├── Deliveries.vue              # 已有
+│           │   ├── Promotions.vue              # 待完善（成员D）
+│           │   ├── Finance.vue                 # 已有
 │           │   ├── Admins.vue                  # 待开发（成员D）
 │           │   ├── Brands.vue                  # 待开发（成员D）
 │           │   ├── Banners.vue                 # 待开发（成员D）
+│           │   ├── CouponsManage.vue           # 待开发（成员D）
 │           │   ├── PurchaseOrders.vue          # 待开发（成员D）仓储进货端
 │           │   ├── AfterSales.vue              # 待开发（成员B）
 │           │   ├── Reviews.vue                 # 待开发（成员B）
@@ -182,7 +190,8 @@ SupermarketSystem/
 │           │   ├── AuditLog.vue                # 待开发（成员C）
 │           │   ├── Seckill.vue                 # 待开发（成员E）
 │           │   ├── Stocktake.vue               # 待开发（成员E）仓储进货端
-│           │   └── DamageRecords.vue           # 待开发（成员E）仓储进货端
+│           │   ├── DamageRecords.vue           # 待开发（成员E）仓储进货端
+│           │   └── Couriers.vue                # 待开发（成员E）
 │           ├── cashier/                        # 收银端（待开发，成员E）
 │           │   ├── Layout.vue
 │           │   └── Cashier.vue
@@ -195,9 +204,7 @@ SupermarketSystem/
 │   └── run_sql.py                      # Python执行脚本（解决编码问题）
 │
 ├── README.md
-├── 系统设计文档.md
-├── 项目总结.md
-└── 前端分工文档.md                      # 前端5人开发分工详细说明（六端全覆盖）
+├── 前端分工文档.md                      # 前端5人开发分工详细说明（六端全覆盖）
 ```
 
 ## 安装部署
@@ -259,11 +266,14 @@ npm run dev
 
 ## 开发进度
 
-- [x] 后端全部 API 接口（17个 Controller，160+ 个接口，编译通过）
-- [x] 数据库表结构（28张表）
-- [x] 顾客端基础页面（登录、商品列表、购物车、结算、订单、地址、个人中心）
+- [x] 后端全部 API 接口（21个 Controller，160+ 个接口，编译通过）
+- [x] 数据库表结构（30+ 张表）
+- [x] 前端基础架构（路由、API封装、Pinia、拦截器）
+- [x] 顾客端核心页面（首页、商品列表/详情、购物车、结算、订单、地址、个人中心、秒杀页）
 - [x] 管理后台基础页面（Dashboard、商品、分类、用户、订单、库存、配送、促销、财务）
-- [ ] 前端功能完善中（详见 `前端分工文档.md`）
+- [ ] 顾客端待完善：售后、评价、优惠券、积分、消息、收藏（成员B/C）
+- [ ] 管理后台待开发：管理员/品牌/轮播图/优惠券/售后/评价/秒杀/盘点/报损/配送员/采购/供应商/审计日志（成员B/C/D/E）
+- [ ] 收银端、配送员端、数据看板（成员E）
 
 ## 前端开发分工
 

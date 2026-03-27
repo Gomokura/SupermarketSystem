@@ -25,7 +25,9 @@ const routes = [
       { path: '/points-logs', name: 'PointsLog', component: () => import('@/views/user/PointsLog.vue') },
       { path: '/messages', name: 'Messages', component: () => import('@/views/user/Messages.vue') },
       { path: '/address', name: 'Address', component: () => import('@/views/user/Address.vue') },
-      { path: '/profile', name: 'Profile', component: () => import('@/views/user/Profile.vue') }
+      { path: '/profile', name: 'Profile', component: () => import('@/views/user/Profile.vue') },
+      { path: '/seckill', name: 'Seckill', component: () => import('@/views/user/Seckill.vue') },
+      { path: '/favorites', name: 'Favorites', component: () => import('@/views/user/Favorites.vue') }
     ]
   },
   // 管理后台（含仓储进货端、数据看板端）
@@ -53,7 +55,9 @@ const routes = [
       { path: '/admin/damage-records', name: 'AdminDamageRecords', component: () => import('@/views/admin/DamageRecords.vue') },
       { path: '/admin/purchase-orders', name: 'AdminPurchaseOrders', component: () => import('@/views/admin/PurchaseOrders.vue') },
       { path: '/admin/suppliers', name: 'AdminSuppliers', component: () => import('@/views/admin/Suppliers.vue') },
-      { path: '/admin/audit-log', name: 'AdminAuditLog', component: () => import('@/views/admin/AuditLog.vue') }
+      { path: '/admin/audit-log', name: 'AdminAuditLog', component: () => import('@/views/admin/AuditLog.vue') },
+      { path: '/admin/couriers', name: 'AdminCouriers', component: () => import('@/views/admin/Couriers.vue') },
+      { path: '/admin/coupons-manage', name: 'AdminCouponsManage', component: () => import('@/views/admin/CouponsManage.vue') }
     ]
   },
   // 收银端
@@ -94,7 +98,7 @@ router.beforeEach((to, from, next) => {
       next('/login')
       return
     }
-  } else if (path !== '/login') {
+  } else if (path !== '/login' && path !== '/home' && path !== '/products' && !path.startsWith('/products/') && path !== '/seckill') {
     const token = localStorage.getItem('token')
     if (!token) {
       next('/login')

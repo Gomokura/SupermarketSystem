@@ -12,9 +12,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import lombok.extern.slf4j.Slf4j;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 @Aspect
 @Component
 public class AuditAspect {
@@ -70,8 +72,8 @@ public class AuditAspect {
 
         try {
             auditLogMapper.insert(log);
-        } catch (Exception ignored) {
-            // 审计日志不应影响主业务
+        } catch (Exception e) {
+            log.warn("审计日志写入失败: {}", e.getMessage());
         }
 
         return ret;

@@ -5,13 +5,13 @@
       <el-table-column prop="orderId" label="订单号" width="100" />
       <el-table-column prop="username" label="用户" width="120" />
       <el-table-column prop="totalAmount" label="金额" width="120" />
-      <el-table-column prop="orderStatus" label="状态" width="120">
+      <el-table-column prop="status" label="状态" width="120">
         <template #default="{ row }">
-          <el-tag>{{ row.orderStatus }}</el-tag>
+          <el-tag>{{ row.status }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="paymentMethod" label="支付方式" width="120" />
-      <el-table-column prop="orderTime" label="下单时间" width="180" />
+      <el-table-column prop="payMethod" label="支付方式" width="120" />
+      <el-table-column prop="createTime" label="下单时间" width="180" />
     </el-table>
     <div class="pagination">
       <el-pagination
@@ -40,7 +40,7 @@ onMounted(() => {
 
 const loadOrders = async () => {
   try {
-    const res = await orderAPI.getList({ pageNum: pageNum.value, pageSize: pageSize.value })
+    const res = await orderAPI.adminGetList({ pageNum: pageNum.value, pageSize: pageSize.value })
     orders.value = res.data.records || res.data || []
     total.value = res.data.total || 0
   } catch (error) {
