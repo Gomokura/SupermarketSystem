@@ -9,9 +9,11 @@ import com.supermarket.dto.RegisterRequest;
 import com.supermarket.entity.Admin;
 import com.supermarket.entity.Courier;
 import com.supermarket.entity.User;
+import com.supermarket.entity.UserCoupon;
 import com.supermarket.mapper.AdminMapper;
 import com.supermarket.mapper.CourierMapper;
 import com.supermarket.mapper.UserMapper;
+import com.supermarket.mapper.UserCouponMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
@@ -32,6 +34,9 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
 
     @Autowired
     private CourierMapper courierMapper;
+
+    @Autowired
+    private UserCouponMapper userCouponMapper;
 
     // ==================== C端用户 ====================
 
@@ -249,12 +254,17 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
         wrapper.eq(User::getPhone, phone);
         User user = this.getOne(wrapper);
         if (user == null) return Result.error(404, "会员不存在");
+
+        long couponCount = userCouponMapper.selectCount(new LambdaQueryWrapper<UserCoupon>()
+                .eq(UserCoupon::getUserId, user.getUserId())
+                .eq(UserCoupon::getStatus, "unused"));
         Map<String, Object> data = new HashMap<>();
         data.put("userId", user.getUserId());
         data.put("nickname", user.getNickname());
         data.put("phone", user.getPhone().replaceAll("(\\d{3})\\d{4}(\\d{4})", "$1****$2"));
         data.put("memberLevel", user.getMemberLevel());
         data.put("points", user.getPoints());
+        data.put("availableCouponCount", couponCount);
         return Result.success(data);
     }
 }

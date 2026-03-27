@@ -1,9 +1,9 @@
 package com.supermarket.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.supermarket.common.Result;
 import com.supermarket.entity.*;
 import com.supermarket.service.AdminService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +19,40 @@ public class AdminController {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    // ==================== 管理员管理 ====================
+
+    @GetMapping("/admins")
+    public Result<?> getAdmins(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword) {
+        return adminService.getAdminList(pageNum, pageSize, keyword);
+    }
+
+    @PostMapping("/admins")
+    public Result<?> createAdmin(
+            @RequestAttribute Integer adminId,
+            @RequestBody Admin admin) {
+        // 权限细分（SUPER_ADMIN 才能创建）在拦截器未做按钮级，这里先按最小可用实现
+        return adminService.createAdmin(admin);
+    }
+
+    @PutMapping("/admins/{targetAdminId}")
+    public Result<?> updateAdmin(
+            @RequestAttribute Integer adminId,
+            @PathVariable Integer targetAdminId,
+            @RequestBody Admin patch) {
+        return adminService.updateAdmin(targetAdminId, patch);
+    }
+
+    @PutMapping("/admins/{targetAdminId}/reset-password")
+    public Result<?> resetPassword(
+            @RequestAttribute Integer adminId,
+            @PathVariable Integer targetAdminId,
+            @RequestParam String newPassword) {
+        return adminService.resetAdminPassword(targetAdminId, newPassword);
+    }
 
     // ==================== 用户管理 ====================
 
@@ -60,13 +94,6 @@ public class AdminController {
         return adminService.getDashboard(days, topN);
     }
 
-    /** D-08 商品销售排行榜 */
-    @GetMapping("/dashboard/top-products")
-    public Result<?> topProducts(
-            @RequestParam(required = false) Integer limit) {
-        return adminService.getTopProducts(limit);
-    }
-
     // ==================== 库存管理 ====================
 
     @PostMapping("/inventory/warehousing")
@@ -102,9 +129,8 @@ public class AdminController {
     public Result<?> getDeliveryList(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) Integer courierId) {
-        return adminService.getDeliveryList(pageNum, pageSize, status, courierId);
+            @RequestParam(required = false) String status) {
+        return adminService.getDeliveryList(pageNum, pageSize, status);
     }
 
     @PutMapping("/deliveries/{deliveryId}/assign")
@@ -119,32 +145,6 @@ public class AdminController {
             @PathVariable Integer deliveryId,
             @RequestParam String status) {
         return adminService.updateDeliveryStatus(deliveryId, status);
-    }
-
-    // ==================== 订单管理 ====================
-
-    /** B-19 填写快递信息（发货） */
-    @PutMapping("/orders/{id}/shipping")
-    public Result<?> shipOrder(
-            @PathVariable Integer id,
-            @RequestBody Map<String, String> body) {
-        return adminService.shipOrder(
-                id,
-                body.get("company"),
-                body.get("trackingNo"));
-    }
-
-    /** B-20 修改订单地址（仅待发货） */
-    @PutMapping("/orders/{id}/address")
-    public Result<?> updateOrderAddress(
-            @PathVariable Integer id,
-            @RequestBody Map<String, String> body) {
-
-        return adminService.updateOrderAddress(
-                id,
-                body.get("name"),
-                body.get("phone"),
-                body.get("address"));
     }
 
     // ==================== 促销管理 ====================
@@ -213,15 +213,12 @@ public class AdminController {
     public Result<?> createPurchaseOrder(
             @RequestBody Map<String, Object> body,
             @RequestAttribute Integer userId) {
-
+        // body: { "order": {...}, "items": [...] }
+        // 直接用 Jackson 转换
         PurchaseOrder order = objectMapper.convertValue(body.get("order"), PurchaseOrder.class);
         order.setOperatorId(userId);
-
-        List<PurchaseOrderItem> items = objectMapper.convertValue(
-                body.get("items"),
-                objectMapper.getTypeFactory().constructCollectionType(List.class, PurchaseOrderItem.class)
-        );
-
+        List<PurchaseOrderItem> items = objectMapper.convertValue(body.get("items"),
+            objectMapper.getTypeFactory().constructCollectionType(List.class, PurchaseOrderItem.class));
         return adminService.createPurchaseOrder(order, items);
     }
 
@@ -264,15 +261,24 @@ public class AdminController {
         return adminService.getCourierList(pageNum, pageSize);
     }
 
-    @PostMapping("/couriers")
-    public Result<?> createCourier(@RequestBody Courier courier) {
-        return adminService.createCourier(courier);
-    }
-
     @PutMapping("/couriers/{courierId}/status")
     public Result<?> updateCourierStatus(
             @PathVariable Integer courierId,
             @RequestParam Integer isDisabled) {
         return adminService.updateCourierStatus(courierId, isDisabled);
+    }
+
+    // ==================== 站内信 ====================
+
+    @PostMapping("/messages")
+    public Result<?> sendMessage(
+            @RequestAttribute Integer adminId,
+            @RequestBody Map<String, Object> body) {
+        Integer userId = body.get("userId") != null ? ((Number) body.get("userId")).intValue() : null;
+        String title = (String) body.get("title");
+        String content = (String) body.get("content");
+        String msgType = (String) body.get("msgType");
+        Integer refId = body.get("refId") != null ? ((Number) body.get("refId")).intValue() : null;
+        return adminService.sendMessageToUser(adminId, userId, title, content, msgType, refId);
     }
 }

@@ -64,6 +64,12 @@ public class CouponController {
 
     // ==================== C端 ====================
 
+    /** 优惠券中心（可领取） */
+    @GetMapping("/center")
+    public Result<?> couponCenter(@RequestAttribute Integer userId) {
+        return couponService.couponCenter(userId);
+    }
+
     /** 领券 */
     @PostMapping("/claim/{couponId}")
     public Result<?> claimCoupon(

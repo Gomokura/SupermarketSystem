@@ -5,6 +5,7 @@ import com.supermarket.service.CashierService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -42,5 +43,43 @@ public class CashierController {
     @GetMapping("/shift/history")
     public Result<?> shiftHistory(@RequestAttribute Integer adminId) {
         return cashierService.getShiftHistory(adminId);
+    }
+
+    /** K-05 搜索商品 */
+    @GetMapping("/products/search")
+    public Result<?> searchProducts(
+            @RequestParam String keyword,
+            @RequestParam(required = false) Integer limit) {
+        return cashierService.searchProducts(keyword, limit);
+    }
+
+    /** K-10~K-12 结账（创建订单+收银记录+更新班次） */
+    @PostMapping("/checkout")
+    public Result<?> checkout(
+            @RequestAttribute Integer adminId,
+            @RequestBody Map<String, Object> body) {
+        String memberPhone = (String) body.get("memberPhone");
+        Integer couponId = body.get("couponId") != null ? ((Number) body.get("couponId")).intValue() : null;
+        String payMethod = (String) body.get("payMethod"); // CASH/MOCK_CARD
+        Double receivedAmount = body.get("receivedAmount") != null ? ((Number) body.get("receivedAmount")).doubleValue() : null;
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) body.get("items");
+        return cashierService.checkout(adminId, memberPhone, couponId, payMethod, receivedAmount, items);
+    }
+
+    /** K-13 查询订单（用于退款） */
+    @GetMapping("/orders/find")
+    public Result<?> findOrder(@RequestParam String orderNo) {
+        return cashierService.findCashierOrder(orderNo);
+    }
+
+    /** K-14 收银退款（整单） */
+    @PostMapping("/refund")
+    public Result<?> refund(
+            @RequestAttribute Integer adminId,
+            @RequestBody Map<String, Object> body) {
+        String orderNo = (String) body.get("orderNo");
+        String reason = (String) body.get("reason");
+        return cashierService.refundCashierOrder(adminId, orderNo, reason);
     }
 }

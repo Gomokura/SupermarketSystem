@@ -22,6 +22,10 @@ public class AddressService extends ServiceImpl<AddressMapper, Address> {
     }
 
     public Result<?> addAddress(Address address) {
+        long cnt = this.count(new LambdaQueryWrapper<Address>().eq(Address::getUserId, address.getUserId()));
+        if (cnt >= 10) {
+            return Result.error("收货地址最多10条");
+        }
         if (address.getIsDefault() != null && address.getIsDefault() == 1) {
             LambdaQueryWrapper<Address> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Address::getUserId, address.getUserId());
@@ -65,6 +69,9 @@ public class AddressService extends ServiceImpl<AddressMapper, Address> {
         if (existing == null) return Result.error("地址不存在");
         if (existing.getUserId() == null || !existing.getUserId().equals(userId)) {
             return Result.error("无权删除该地址");
+        }
+        if (existing.getIsDefault() != null && existing.getIsDefault() == 1) {
+            return Result.error("默认地址不能删除，请先设置其他地址为默认");
         }
         this.removeById(addressId);
         return Result.success();

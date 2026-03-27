@@ -13,6 +13,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 @Service
 public class CartService extends ServiceImpl<CartMapper, Cart> {
@@ -177,5 +180,65 @@ public class CartService extends ServiceImpl<CartMapper, Cart> {
         wrapper.eq(Cart::getUserId, userId);
         this.remove(wrapper);
         return Result.success();
+    }
+
+    /** 勾选/取消勾选单个购物车项 */
+    public Result<?> checkItem(Integer userId, Integer cartId, Integer checked) {
+        Cart cart = this.getById(cartId);
+        if (cart == null) return Result.error("购物车项不存在");
+        if (!cart.getUserId().equals(userId)) return Result.error("无权操作购物车项");
+        cart.setIsChecked((checked != null && checked == 1) ? 1 : 0);
+        this.updateById(cart);
+        return Result.success();
+    }
+
+    /** 全选/全不选 */
+    public Result<?> checkAll(Integer userId, Integer checked) {
+        int v = (checked != null && checked == 1) ? 1 : 0;
+        List<Cart> carts = this.list(new LambdaQueryWrapper<Cart>().eq(Cart::getUserId, userId));
+        for (Cart c : carts) {
+            c.setIsChecked(v);
+            this.updateById(c);
+        }
+        return Result.success();
+    }
+
+    /** 批量删除购物车项 */
+    public Result<?> batchDelete(Integer userId, List<Integer> cartIds) {
+        if (cartIds == null || cartIds.isEmpty()) return Result.success();
+        List<Cart> carts = this.listByIds(cartIds);
+        List<Integer> ownedIds = carts.stream()
+                .filter(c -> c != null && userId.equals(c.getUserId()))
+                .map(Cart::getCartId)
+                .collect(Collectors.toList());
+        if (!ownedIds.isEmpty()) {
+            this.removeByIds(ownedIds);
+        }
+        return Result.success();
+    }
+
+    /** 选中商品统计（件数、金额） */
+    public Result<?> checkedSummary(Integer userId) {
+        List<Cart> list = this.list(new LambdaQueryWrapper<Cart>()
+                .eq(Cart::getUserId, userId)
+                .eq(Cart::getIsChecked, 1));
+        double totalAmount = 0;
+        int totalCount = 0;
+        for (Cart c : list) {
+            Product p = productMapper.selectById(c.getProductId());
+            if (p == null || p.getIsDeleted() == 1 || !"active".equals(p.getStatus())) continue;
+            double unitPrice = p.getPrice() != null ? p.getPrice() : 0;
+            if (c.getSkuId() != null) {
+                ProductSku sku = productSkuMapper.selectById(c.getSkuId());
+                if (sku == null || !"active".equals(sku.getStatus())) continue;
+                if (sku.getPrice() != null) unitPrice = sku.getPrice();
+            }
+            totalCount += c.getQuantity();
+            totalAmount += unitPrice * c.getQuantity();
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("totalCount", totalCount);
+        data.put("totalAmount", Math.round(totalAmount * 100.0) / 100.0);
+        return Result.success(data);
     }
 }

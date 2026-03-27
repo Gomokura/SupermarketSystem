@@ -25,6 +25,47 @@ public class CouponService extends ServiceImpl<CouponMapper, Coupon> {
 
     @Autowired private UserCouponMapper userCouponMapper;
 
+    /** C端：优惠券中心（可领取） */
+    public Result<?> couponCenter(Integer userId) {
+        Date now = new Date();
+        List<Coupon> all = this.list(new LambdaQueryWrapper<Coupon>()
+                .eq(Coupon::getStatus, "active")
+                .le(Coupon::getStartTime, now)
+                .ge(Coupon::getEndTime, now)
+                .orderByDesc(Coupon::getCreateTime));
+
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Coupon c : all) {
+            long claimed = userCouponMapper.selectCount(new LambdaQueryWrapper<UserCoupon>()
+                    .eq(UserCoupon::getUserId, userId)
+                    .eq(UserCoupon::getCouponId, c.getCouponId()));
+            int perLimit = c.getPerLimit() == null ? 1 : c.getPerLimit();
+            int total = c.getTotalCount() == null ? 0 : c.getTotalCount();
+            int issued = c.getIssuedCount() == null ? 0 : c.getIssuedCount();
+            boolean stockOk = total <= 0 || issued < total;
+            boolean canClaim = stockOk && (perLimit < 0 || claimed < perLimit);
+
+            Map<String, Object> row = new HashMap<>();
+            row.put("couponId", c.getCouponId());
+            row.put("couponName", c.getCouponName());
+            row.put("description", c.getDescription());
+            row.put("couponType", c.getCouponType());
+            row.put("faceValue", c.getFaceValue());
+            row.put("minAmount", c.getMinAmount());
+            row.put("categoryId", c.getCategoryId());
+            row.put("startTime", c.getStartTime());
+            row.put("endTime", c.getEndTime());
+            row.put("totalCount", total);
+            row.put("issuedCount", issued);
+            row.put("remainCount", total > 0 ? Math.max(0, total - issued) : -1);
+            row.put("perLimit", perLimit);
+            row.put("claimedCount", claimed);
+            row.put("canClaim", canClaim);
+            rows.add(row);
+        }
+        return Result.success(rows);
+    }
+
     /** B端：分页查询优惠券列表 */
     public Result<?> adminGetCoupons(Integer pageNum, Integer pageSize, String status) {
         Page<Coupon> page = new Page<>(pageNum, pageSize);
@@ -82,11 +123,14 @@ public class CouponService extends ServiceImpl<CouponMapper, Coupon> {
                 && coupon.getIssuedCount() >= coupon.getTotalCount())
             throw new BusinessException("优惠券已领完");
 
-        // 检查是否已领过
+        // 限领次数校验（per_limit，-1=不限）
         LambdaQueryWrapper<UserCoupon> check = new LambdaQueryWrapper<>();
         check.eq(UserCoupon::getUserId, userId).eq(UserCoupon::getCouponId, couponId);
-        if (userCouponMapper.selectCount(check) > 0)
-            throw new BusinessException("您已领取过该优惠券");
+        long claimed = userCouponMapper.selectCount(check);
+        int perLimit = coupon.getPerLimit() == null ? 1 : coupon.getPerLimit();
+        if (perLimit >= 0 && claimed >= perLimit) {
+            throw new BusinessException("已达到该券限领次数");
+        }
 
         UserCoupon uc = new UserCoupon();
         uc.setUserId(userId);

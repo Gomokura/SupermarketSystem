@@ -2,21 +2,38 @@ package com.supermarket.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 @Data
 @TableName("ORDER_ITEMS")
 public class OrderItem {
-    @TableId(value = "ITEM_ID", type = IdType.AUTO)  // 数据库主键 ITEM_ID
+    @TableId(value = "ITEM_ID", type = IdType.AUTO)
     private Integer itemId;
     private Integer orderId;
     private Integer productId;
-    private String productName;   // 商品名快照，数据库字段 PRODUCT_NAME
-    private String productImage;  // 商品图快照，数据库字段 PRODUCT_IMAGE
-    private Double unitPrice;     // 单价快照，数据库字段 UNIT_PRICE
+    private Integer skuId;
+    private String productName;
+    /** v3 列名 sku_name，这里用字段映射 */
+    @TableField("SKU_NAME")
+    private String skuName;
+    private String productImage;
+    private Double unitPrice;
+    /** 成本价快照（毛利分析） */
+    private Double costPrice;
     private Integer quantity;
     private Double subtotal;
-    private Integer skuId;        // SKU ID快照，数据库字段 SKU_ID
-    private String specName;      // 规格描述快照，数据库字段 SPEC_NAME
+    /** 兼容旧前端字段名：specName -> skuName */
+    @TableField(exist = false)
+    private String specName;
+
+    public String getSpecName() {
+        return specName != null ? specName : skuName;
+    }
+
+    public void setSpecName(String specName) {
+        this.specName = specName;
+        if (this.skuName == null) this.skuName = specName;
+    }
 }
