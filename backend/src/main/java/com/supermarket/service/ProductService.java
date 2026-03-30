@@ -67,17 +67,19 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
             wrapper.le(Product::getPrice, maxPrice);
         }
 
-        // 排序
+        // 排序（兼容前端 sortBy：sales / salesCount / createTime / new）
         if ("price".equals(sortBy)) {
             if ("asc".equals(sortOrder)) {
                 wrapper.orderByAsc(Product::getPrice);
             } else {
                 wrapper.orderByDesc(Product::getPrice);
             }
-        } else if ("sales".equals(sortBy)) {
+        } else if ("sales".equals(sortBy) || "salesCount".equals(sortBy)) {
             wrapper.orderByDesc(Product::getSalesCount);
         } else if ("rating".equals(sortBy)) {
             wrapper.orderByDesc(Product::getAvgRating);
+        } else if ("createTime".equals(sortBy) || "new".equals(sortBy)) {
+            wrapper.orderByDesc(Product::getCreateTime);
         } else {
             wrapper.orderByDesc(Product::getCreateTime);
         }

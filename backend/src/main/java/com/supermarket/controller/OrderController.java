@@ -1,4 +1,4 @@
-package com.supermarket.controller;
+﻿package com.supermarket.controller;
 
 import com.supermarket.common.Result;
 import com.supermarket.dto.CreateOrderRequest;
@@ -16,119 +16,10 @@ public class OrderController {
     @Autowired
     private OrderService orderService;
 
-    // ==================== C端 ====================
+    // ==================== C绔?=============    }
 
     /**
-     * 用户订单列表
-     * GET /orders/list?status=&pageNum=&pageSize=
-     */
-    @GetMapping("/list")
-    public Result<?> getUserOrders(
-            @RequestAttribute Integer userId,
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
-        return orderService.getUserOrders(userId, status, pageNum, pageSize);
-    }
-
-    /**
-     * 订单详情
-     * GET /orders/{orderId}
-     */
-    @GetMapping("/{orderId}")
-    public Result<?> getOrderDetail(
-            @PathVariable Integer orderId,
-            @RequestAttribute Integer userId) {
-        return orderService.getOrderDetail(orderId, userId);
-    }
-
-    /**
-     * 提交订单
-     * POST /orders/create
-     * body: { addressId, paymentMethod, couponId, pointsUsed, remark, items: [{productId, quantity, skuId, specName}] }
-     */
-    @PostMapping("/create")
-    public Result<?> createOrder(
-            @RequestAttribute Integer userId,
-            @RequestBody CreateOrderRequest request) {
-        return orderService.createOrder(
-                userId,
-                request.getAddressId(),
-                request.getPaymentMethod(),
-                request.getItems(),
-                request.getCouponId(),
-                request.getPointsUsed(),
-                request.getRemark()
-        );
-    }
-
-    /**
-     * 支付订单
-     * POST /orders/{orderId}/pay
-     * body: { "payMethod": "wechat" }
-     */
-    @PostMapping("/{orderId}/pay")
-    public Result<?> payOrder(
-            @PathVariable Integer orderId,
-            @RequestAttribute Integer userId,
-            @RequestBody Map<String, String> body) {
-        return orderService.payOrder(orderId, userId, body.get("payMethod"));
-    }
-
-    /**
-     * 取消订单
-     * PUT /orders/{orderId}/cancel
-     */
-    @PutMapping("/{orderId}/cancel")
-    public Result<?> cancelOrder(
-            @PathVariable Integer orderId,
-            @RequestAttribute Integer userId) {
-        return orderService.cancelOrder(orderId, userId);
-    }
-
-    /**
-     * 确认收货
-     * PUT /orders/{orderId}/confirm
-     */
-    @PutMapping("/{orderId}/confirm")
-    public Result<?> confirmReceipt(
-            @PathVariable Integer orderId,
-            @RequestAttribute Integer userId) {
-        return orderService.confirmReceipt(orderId, userId);
-    }
-
-    // ==================== B端管理 ====================
-
-    /**
-     * 管理后台订单列表
-     * GET /orders/admin/list?status=&orderNo=&userId=&pageNum=&pageSize=
-     */
-    @GetMapping("/admin/list")
-    public Result<?> adminGetOrderList(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String orderNo,
-            @RequestParam(required = false) Integer userId,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "20") Integer pageSize,
-            @RequestAttribute Integer adminId) {
-        return orderService.adminGetOrderList(status, orderNo, userId, startDate, endDate, pageNum, pageSize);
-    }
-
-    /**
-     * 管理员发货
-     * PUT /orders/{orderId}/ship
-     */
-    @PutMapping("/{orderId}/ship")
-    public Result<?> shipOrder(
-            @PathVariable Integer orderId,
-            @RequestAttribute Integer userId) {
-        return orderService.shipOrder(orderId, userId);
-    }
-
-    /**
-     * 管理员取消订单
+     * 绠＄悊鍛樺彇娑堣鍗?
      * PUT /orders/{orderId}/admin-cancel
      * body: { "reason": "..." }
      */
@@ -141,10 +32,10 @@ public class OrderController {
         return orderService.adminCancelOrder(orderId, userId, reason);
     }
 
-    // ==================== 收银台端 ====================
+    // ==================== 鏀堕摱鍙扮 ====================
 
     /**
-     * 收银台快速下单（扫码/手动录入）
+     * 鏀堕摱鍙板揩閫熶笅鍗曪紙鎵爜/鎵嬪姩褰曞叆锛?
      * POST /orders/cashier
      * body: { payMethod, receivedAmount, items: [{productId, quantity}] }
      */
@@ -170,10 +61,10 @@ public class OrderController {
         return orderService.cashierCreateOrder(userId, items, payMethod, receivedAmount);
     }
 
-    // ==================== 配送与轨迹 ====================
+    // ==================== 閰嶉€佷笌杞ㄨ抗 ====================
 
     /**
-     * 订单配送轨迹
+     * 璁㈠崟閰嶉€佽建杩?
      * GET /orders/{orderId}/delivery-trace
      */
     @GetMapping("/{orderId}/delivery-trace")
@@ -184,7 +75,7 @@ public class OrderController {
     }
 
     /**
-     * 订单时间线（订单全生命周期节点）
+     * 璁㈠崟鏃堕棿绾匡紙璁㈠崟鍏ㄧ敓鍛藉懆鏈熻妭鐐癸級
      * GET /orders/{orderId}/timeline
      */
     @GetMapping("/{orderId}/timeline")
@@ -195,7 +86,7 @@ public class OrderController {
     }
 
     /**
-     * 管理员指派配送员
+     * 绠＄悊鍛樻寚娲鹃厤閫佸憳
      * PUT /orders/{orderId}/assign-courier
      * body: { courierId }
      */
