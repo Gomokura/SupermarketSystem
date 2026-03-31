@@ -1,231 +1,249 @@
 <template>
   <div class="page-container">
-    <div class="page-header">
-      <h2>站内消息</h2>
-      <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99">
-        <el-button type="primary" plain @click="markAllRead">全部已读</el-button>
-      </el-badge>
-    </div>
+    <h2>站内消息</h2>
 
-    <el-card>
-      <el-tabs v-model="activeTab" @tab-change="loadMessages">
-        <el-tab-pane label="全部" name="all" />
-        <el-tab-pane label="订单" name="order" />
-        <el-tab-pane label="促销" name="promotion" />
-        <el-tab-pane label="系统" name="system" />
-        <el-tab-pane label="退款" name="refund" />
-      </el-tabs>
-
-      <div v-loading="loading">
-        <div v-if="messages.length > 0">
-          <div
-            v-for="msg in messages"
-            :key="msg.messageId"
-            class="message-item"
-            :class="{ 'message-unread': msg.isRead === 0 }"
-            @click="handleRead(msg)"
-          >
-            <div class="message-icon">
-              <el-icon size="20"><Bell /></el-icon>
-            </div>
-            <div class="message-content">
-              <div class="message-title">
-                <span v-if="msg.isRead === 0" class="unread-dot" />
-                {{ msg.title }}
-              </div>
-              <div class="message-body">{{ msg.content }}</div>
-              <div class="message-time">{{ formatDate(msg.createTime) }}</div>
-            </div>
-            <div class="message-type">
-              <el-tag size="small" :type="getTagType(msg.type)">{{ getTypeText(msg.type) }}</el-tag>
-            </div>
-          </div>
-        </div>
-        <el-empty v-else description="暂无消息" />
-
-        <el-pagination
-          v-if="total > 0"
-          v-model:current-page="page"
-          v-model:page-size="pageSize"
-          :total="total"
-          :page-sizes="[10, 20, 50]"
-          layout="total, sizes, prev, pager, next"
-          class="mt-16"
-          @current-change="loadMessages"
-          @size-change="loadMessages"
-        />
+    <el-card class="header-card">
+      <div class="header-actions">
+        <el-button type="primary" @click="markAllRead">全部已读</el-button>
+        <el-select v-model="filterType" placeholder="消息类型" clearable @change="loadMessages">
+          <el-option label="全部" value=""></el-option>
+          <el-option label="订单消息" value="ORDER"></el-option>
+          <el-option label="促销消息" value="PROMOTION"></el-option>
+          <el-option label="系统消息" value="SYSTEM"></el-option>
+          <el-option label="退款消息" value="REFUND"></el-option>
+        </el-select>
       </div>
     </el-card>
+
+    <div class="message-list">
+      <el-card
+        v-for="msg in messages"
+        :key="msg.messageId"
+        class="message-card"
+        :class="{ unread: !msg.isRead }"
+        @click="handleRead(msg)"
+      >
+        <div class="message-content">
+          <div class="message-icon">
+            <el-icon :size="24">
+              <component :is="getMessageIcon(msg.type)" />
+            </el-icon>
+          </div>
+          <div class="message-body">
+            <div class="message-header">
+              <span class="message-title">{{ msg.title }}</span>
+              <el-tag size="small" :type="getTypeTag(msg.type)">{{ getTypeText(msg.type) }}</el-tag>
+              <span v-if="!msg.isRead" class="unread-dot"></span>
+            </div>
+            <div class="message-text">{{ msg.content }}</div>
+            <div class="message-time">{{ formatDateTime(msg.createTime) }}</div>
+          </div>
+        </div>
+      </el-card>
+
+      <el-empty v-if="messages.length === 0" description="暂无消息"></el-empty>
+    </div>
+
+    <el-pagination
+      v-if="total > 0"
+      class="pagination"
+      background
+      layout="prev, pager, next"
+      :total="total"
+      :page-size="pageSize"
+      :current-page="currentPage"
+      @current-change="handlePageChange"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Bell } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { messageAPI } from '@/api'
 
-const activeTab = ref('all')
 const messages = ref([])
-const unreadCount = ref(0)
-const loading = ref(false)
-const page = ref(1)
+const filterType = ref('')
+const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
-onMounted(() => {
-  loadUnreadCount()
-  loadMessages()
-})
-
-const loadUnreadCount = async () => {
-  try {
-    const res = await messageAPI.getUnreadCount()
-    unreadCount.value = res.data ?? 0
-  } catch (error) {
-    console.error(error)
+const getMessageIcon = (type) => {
+  const iconMap = {
+    'ORDER': 'Message',
+    'PROMOTION': 'Gift',
+    'SYSTEM': 'Bell',
+    'REFUND': 'Money'
   }
+  return iconMap[type] || 'Message'
+}
+
+const getTypeTag = (type) => {
+  const map = {
+    'ORDER': '',
+    'PROMOTION': 'warning',
+    'SYSTEM': 'info',
+    'REFUND': 'success'
+  }
+  return map[type] || ''
+}
+
+const getTypeText = (type) => {
+  const map = {
+    'ORDER': '订单',
+    'PROMOTION': '促销',
+    'SYSTEM': '系统',
+    'REFUND': '退款'
+  }
+  return map[type] || '其他'
+}
+
+const formatDateTime = (date) => {
+  if (!date) return '-'
+  return new Date(date).toLocaleString('zh-CN')
 }
 
 const loadMessages = async () => {
-  loading.value = true
   try {
     const params = {
-      page: page.value,
-      pageSize: pageSize.value,
-      type: activeTab.value !== 'all' ? activeTab.value : undefined
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
+    if (filterType.value) {
+      params.type = filterType.value
     }
     const res = await messageAPI.getList(params)
     messages.value = res.data?.records || res.data || []
-    total.value = res.data?.total || messages.value.length
+    total.value = res.data?.total || 0
   } catch (error) {
     console.error(error)
-  } finally {
-    loading.value = false
   }
 }
 
 const handleRead = async (msg) => {
-  if (msg.isRead === 0) {
-    try {
-      await messageAPI.markRead(msg.messageId)
-      msg.isRead = 1
-      unreadCount.value = Math.max(0, unreadCount.value - 1)
-    } catch (error) {
-      console.error(error)
-    }
+  if (msg.isRead) return
+  try {
+    await messageAPI.markRead(msg.messageId)
+    msg.isRead = true
+  } catch (error) {
+    console.error(error)
   }
 }
 
 const markAllRead = async () => {
   try {
+    await ElMessageBox.confirm('确定将所有消息标记为已读？', '提示', { type: 'info' })
     await messageAPI.markAllRead()
-    ElMessage.success('已全部标记为已读')
-    messages.value.forEach(m => m.isRead = 1)
-    unreadCount.value = 0
+    ElMessage.success('操作成功')
+    loadMessages()
   } catch (error) {
-    console.error(error)
+    if (error !== 'cancel') console.error(error)
   }
 }
 
-const getTagType = (type) => {
-  const map = { 'order': 'primary', 'promotion': 'danger', 'system': 'info', 'refund': 'success' }
-  return map[type] || 'info'
+const handlePageChange = (page) => {
+  currentPage.value = page
+  loadMessages()
 }
 
-const getTypeText = (type) => {
-  const map = { 'order': '订单', 'promotion': '促销', 'system': '系统', 'refund': '退款' }
-  return map[type] || '其他'
-}
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return dateStr.replace('T', ' ').substring(0, 19)
-}
+onMounted(() => {
+  loadMessages()
+})
 </script>
 
 <style scoped>
 .page-container {
   padding: 20px;
 }
-.page-header {
+
+.header-card {
+  margin-bottom: 20px;
+}
+
+.header-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
 }
-.page-header h2 {
-  margin: 0;
-}
-.message-item {
+
+.message-list {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   gap: 12px;
-  padding: 16px 0;
-  border-bottom: 1px solid #f0f0f0;
+}
+
+.message-card {
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.3s;
 }
-.message-item:last-child {
-  border-bottom: none;
+
+.message-card:hover {
+  transform: translateX(4px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
-.message-item:hover {
-  background: #f5f7fa;
-  padding-left: 8px;
-  padding-right: 8px;
-  margin: 0 -8px;
+
+.message-card.unread {
+  background-color: #f0f9ff;
+  border-left: 3px solid #409eff;
 }
-.message-unread {
-  background: #ecf5ff;
-  border-radius: 8px;
-  padding: 16px 12px;
-  margin: 4px 0;
+
+.message-content {
+  display: flex;
+  gap: 16px;
 }
-.message-unread:hover {
-  background: #d9ecff;
-}
+
 .message-icon {
+  width: 40px;
+  height: 40px;
+  background: #f0f2f5;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #409eff;
-  padding-top: 2px;
   flex-shrink: 0;
 }
-.message-unread .message-icon {
-  color: #337ecc;
-}
-.message-content {
+
+.message-body {
   flex: 1;
   min-width: 0;
 }
-.message-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
+
+.message-header {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 8px;
 }
-.message-body {
-  font-size: 13px;
-  color: #606266;
-  margin-top: 4px;
-  line-height: 1.5;
+
+.message-title {
+  font-weight: 500;
+  color: #333;
 }
-.message-time {
-  font-size: 12px;
-  color: #c0c4cc;
-  margin-top: 6px;
-}
+
 .unread-dot {
   width: 8px;
   height: 8px;
   background: #409eff;
   border-radius: 50%;
-  flex-shrink: 0;
+  margin-left: auto;
 }
-.message-type {
-  flex-shrink: 0;
+
+.message-text {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 8px;
+  line-height: 1.5;
 }
-.mt-16 {
-  margin-top: 16px;
+
+.message-time {
+  color: #999;
+  font-size: 12px;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
 }
 </style>

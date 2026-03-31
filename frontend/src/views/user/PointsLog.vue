@@ -1,67 +1,65 @@
 <template>
   <div class="page-container">
-    <div class="page-header">
-      <h2>积分流水</h2>
-    </div>
+    <h2>积分流水</h2>
 
-    <el-card class="balance-card">
-      <div class="balance-display">
-        <div class="balance-label">当前积分</div>
-        <div class="balance-value">{{ balance }}</div>
+    <el-card class="points-card">
+      <div class="points-balance">
+        <span class="label">当前积分</span>
+        <span class="value">{{ currentPoints }}</span>
       </div>
     </el-card>
 
-    <el-card class="mt-20">
-      <div class="filter-bar">
-        <el-select v-model="filterType" placeholder="全部类型" clearable style="width: 160px" @change="loadLogs">
-          <el-option label="全部类型" value="" />
-          <el-option label="订单获得" value="order" />
-          <el-option label="订单扣减" value="order_deduct" />
-          <el-option label="积分兑换" value="redeem" />
-          <el-option label="管理员调整" value="admin" />
-          <el-option label="退款返还" value="refund" />
-        </el-select>
-        <el-button @click="loadLogs">刷新</el-button>
-      </div>
-
-      <el-table :data="logs" border v-loading="loading" class="mt-16">
-        <el-table-column label="变动类型" width="120">
-          <template #default="{ row }">
-            <el-tag :type="getTagType(row.changeType)">{{ getTypeText(row.changeType) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="变动积分" width="120">
-          <template #default="{ row }">
-            <span :class="row.changeAmount > 0 ? 'text-green' : 'text-red'">
-              {{ row.changeAmount > 0 ? '+' : '' }}{{ row.changeAmount }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="变动后余额" width="120">
-          <template #default="{ row }">
-            <span class="text-bold">{{ row.balanceAfter }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="reason" label="说明" min-width="200" />
-        <el-table-column label="时间" width="180">
-          <template #default="{ row }">
-            {{ formatDate(row.createTime) }}
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <el-pagination
-        v-if="total > 0"
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :total="total"
-        :page-sizes="[10, 20, 50]"
-        layout="total, sizes, prev, pager, next"
-        class="mt-16"
-        @current-change="loadLogs"
-        @size-change="loadLogs"
-      />
+    <el-card class="filter-card">
+      <el-form :inline="true">
+        <el-form-item label="变动类型">
+          <el-select v-model="filterType" placeholder="全部" clearable @change="loadLogs">
+            <el-option label="全部" value=""></el-option>
+            <el-option label="订单获得" value="ORDER_EARN"></el-option>
+            <el-option label="订单抵扣" value="ORDER_DEDUCT"></el-option>
+            <el-option label="评价奖励" value="REVIEW_BONUS"></el-option>
+            <el-option label="积分兑换" value="EXCHANGE"></el-option>
+            <el-option label="管理员调整" value="ADMIN_ADJUST"></el-option>
+          </el-select>
+        </el-form-item>
+      </el-form>
     </el-card>
+
+    <el-table :data="logs" border v-loading="loading">
+      <el-table-column prop="reason" label="变动类型" width="120">
+        <template #default="{ row }">
+          <el-tag :type="getTypeTag(row.type)" size="small">{{ formatReason(row.reason) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="变动积分" width="120">
+        <template #default="{ row }">
+          <span :class="row.type === 'EARN' || row.type === 'REFUND' ? 'points-add' : 'points-sub'">
+            {{ row.type === 'EARN' || row.type === 'REFUND' ? '+' : '-' }}{{ row.points }}
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="balance" label="变动后余额" width="120" />
+      <el-table-column prop="remark" label="备注" min-width="150">
+        <template #default="{ row }">
+          {{ row.remark || '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="createTime" label="时间" width="180">
+        <template #default="{ row }">
+          {{ formatDateTime(row.createTime) }}
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      v-if="total > 0"
+      class="pagination"
+      background
+      layout="prev, pager, next"
+      :total="total"
+      :page-size="pageSize"
+      :current-page="currentPage"
+      @current-change="handlePageChange"
+    />
   </div>
 </template>
 
@@ -70,23 +68,41 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { pointsAPI } from '@/api'
 
-const balance = ref(0)
+const currentPoints = ref(0)
 const logs = ref([])
 const loading = ref(false)
-const page = ref(1)
+const filterType = ref('')
+const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
-const filterType = ref('')
 
-onMounted(() => {
-  loadBalance()
-  loadLogs()
-})
+const getTypeTag = (type) => {
+  if (type === 'EARN' || type === 'REFUND') return 'success'
+  if (type === 'DEDUCT' || type === 'EXPIRE') return 'danger'
+  return 'warning'
+}
 
-const loadBalance = async () => {
+const formatReason = (reason) => {
+  const map = {
+    'ORDER_EARN': '订单获得',
+    'ORDER_DEDUCT': '订单抵扣',
+    'REVIEW_BONUS': '评价奖励',
+    'EXCHANGE': '积分兑换',
+    'ADMIN_ADJUST': '管理员调整',
+    'REFUND': '退款返还'
+  }
+  return map[reason] || reason || '-'
+}
+
+const formatDateTime = (date) => {
+  if (!date) return '-'
+  return new Date(date).toLocaleString('zh-CN')
+}
+
+const loadPoints = async () => {
   try {
     const res = await pointsAPI.getMyPoints()
-    balance.value = res.data?.balance ?? 0
+    currentPoints.value = res.data?.points || 0
   } catch (error) {
     console.error(error)
   }
@@ -95,99 +111,78 @@ const loadBalance = async () => {
 const loadLogs = async () => {
   loading.value = true
   try {
-    const res = await pointsAPI.getLogs({
-      page: page.value,
-      pageSize: pageSize.value,
-      reason: filterType.value || undefined
-    })
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
+    if (filterType.value) {
+      params.reason = filterType.value
+    }
+    const res = await pointsAPI.getLogs(params)
     logs.value = res.data?.records || res.data || []
-    total.value = res.data?.total || logs.value.length
+    total.value = res.data?.total || 0
   } catch (error) {
     console.error(error)
+    ElMessage.error('加载积分记录失败')
   } finally {
     loading.value = false
   }
 }
 
-const getTagType = (type) => {
-  const map = {
-    'order': 'success',
-    'order_deduct': 'danger',
-    'redeem': 'warning',
-    'admin': 'info',
-    'refund': 'success'
-  }
-  return map[type] || 'info'
+const handlePageChange = (page) => {
+  currentPage.value = page
+  loadLogs()
 }
 
-const getTypeText = (type) => {
-  const map = {
-    'order': '订单获得',
-    'order_deduct': '订单扣减',
-    'redeem': '积分兑换',
-    'admin': '管理员调整',
-    'refund': '退款返还'
-  }
-  return map[type] || type || '其他'
-}
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return dateStr.replace('T', ' ').substring(0, 19)
-}
+onMounted(() => {
+  loadPoints()
+  loadLogs()
+})
 </script>
 
 <style scoped>
 .page-container {
   padding: 20px;
 }
-.page-header {
-  margin-bottom: 0;
+
+.points-card {
+  margin-bottom: 20px;
 }
-.page-header h2 {
-  margin: 0;
+
+.points-balance {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
-.balance-card {
-  margin-top: 20px;
-  background: linear-gradient(135deg, #409eff, #66b1ff);
-  border: none;
+
+.points-balance .label {
+  font-size: 16px;
+  color: #666;
 }
-.balance-card :deep(.el-card__body) {
-  padding: 30px;
-}
-.balance-display {
-  text-align: center;
-  color: #fff;
-}
-.balance-label {
-  font-size: 14px;
-  opacity: 0.9;
-}
-.balance-value {
-  font-size: 48px;
+
+.points-balance .value {
+  font-size: 32px;
   font-weight: bold;
-  margin-top: 8px;
+  color: #ff4d4f;
 }
-.mt-20 {
-  margin-top: 20px;
+
+.filter-card {
+  margin-bottom: 20px;
 }
-.mt-16 {
-  margin-top: 16px;
-}
-.text-green {
+
+.points-add {
   color: #67c23a;
   font-weight: bold;
 }
-.text-red {
+
+.points-sub {
   color: #f56c6c;
   font-weight: bold;
 }
-.text-bold {
-  font-weight: bold;
-}
-.filter-bar {
+
+.pagination {
+  margin-top: 20px;
   display: flex;
-  gap: 10px;
-  align-items: center;
+  justify-content: center;
 }
 </style>
