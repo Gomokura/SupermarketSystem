@@ -7,9 +7,10 @@ spring:
 
   datasource:
     driver-class-name: oracle.jdbc.OracleDriver
-    url: jdbc:oracle:thin:@//localhost:1521/XE
+    # 本机为 Oracle 11g 实例 ORCL 时使用 SID 写法；若为 XE 可改回 @//localhost:1521/XE
+    url: jdbc:oracle:thin:@localhost:1521:ORCL
     username: system
-    password: 123456
+    password: Liu12345
     hikari:
       connection-timeout: 30000
       maximum-pool-size: 10

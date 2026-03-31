@@ -135,7 +135,8 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
     @Transactional
     public Result<?> createOrder(Integer userId, Integer addressId, String paymentMethod,
                                  List<CreateOrderRequest.CartItem> cartItems,
-                                 Integer couponId, Integer pointsUsed, String remark) {
+                                 Integer couponId, Integer pointsUsed, String remark,
+                                 String deliveryTimeSlot) {
         // 1. 校验收货地址
         Address address = addressMapper.selectById(addressId);
         if (address == null || !address.getUserId().equals(userId)) return Result.error("收货地址不存在");
@@ -197,6 +198,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         order.setPayAmount(round2(totalAmount - calc.couponDiscount - calc.pointsDeductAmount));
         order.setPayMethod(paymentMethod != null ? paymentMethod : "MOCK");
         order.setRemark(remark);
+        order.setDeliveryTimeSlot(deliveryTimeSlot);
         order.setStatus("PENDING_PAY");
         order.setCreateTime(new Date());
         order.setUpdateTime(new Date());
@@ -350,7 +352,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
     }
 
     /** 管理员发货（paid→shipped） */
-    public Result<?> shipOrder(Integer orderId, Integer operatorId) {
+    public Result<?> shipOrder(Integer orderId, Integer operatorId, String expressCompany, String expressNo) {
         Order order = this.getById(orderId);
         if (order == null) return Result.error("订单不存在");
         if (!"PENDING_SHIP".equals(order.getStatus())) return Result.error("只有待发货订单才能发货");
@@ -358,8 +360,11 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         order.setStatus("SHIPPING");
         order.setShipTime(new Date());
         order.setUpdateTime(new Date());
+        if (expressCompany != null) order.setExpressCompany(expressCompany);
+        if (expressNo != null) order.setExpressNo(expressNo);
         this.updateById(order);
-        writeStatusLog(orderId, from, "SHIPPING", "ADMIN", operatorId, null, "管理员发货");
+        writeStatusLog(orderId, from, "SHIPPING", "ADMIN", operatorId, null,
+                "管理员发货" + (expressCompany != null && expressNo != null ? "，快递：" + expressCompany + " " + expressNo : ""));
         return Result.success("发货成功");
     }
 
@@ -528,6 +533,46 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         data.put("receivedAmount", receivedAmount);
         data.put("change", Math.max(0, change));
         return Result.success(data);
+    }
+
+    // ==================== 收银台端 ====================
+    /** C-46 再次购买：将历史订单商品加入购物车 */
+    public Result<?> reorder(Integer orderId, Integer userId) {
+        Order order = this.getById(orderId);
+        if (order == null) return Result.error("订单不存在");
+        if (!order.getUserId().equals(userId)) return Result.error("无权操作");
+
+        LambdaQueryWrapper<OrderItem> iw = new LambdaQueryWrapper<>();
+        iw.eq(OrderItem::getOrderId, orderId);
+        List<OrderItem> items = orderItemMapper.selectList(iw);
+        if (items == null || items.isEmpty()) return Result.error("订单无商品");
+
+        int count = 0;
+        for (OrderItem item : items) {
+            Product product = productMapper.selectById(item.getProductId());
+            if (product == null || product.getIsDeleted() == 1 || !"active".equals(product.getStatus())) continue;
+
+            LambdaQueryWrapper<Cart> cw = new LambdaQueryWrapper<>();
+            cw.eq(Cart::getUserId, userId).eq(Cart::getProductId, item.getProductId());
+            if (item.getSkuId() != null) cw.eq(Cart::getSkuId, item.getSkuId());
+            else cw.isNull(Cart::getSkuId);
+            Cart existing = cartMapper.selectOne(cw);
+
+            if (existing != null) {
+                existing.setQuantity(existing.getQuantity() + item.getQuantity());
+                cartMapper.updateById(existing);
+            } else {
+                Cart cartItem = new Cart();
+                cartItem.setUserId(userId);
+                cartItem.setProductId(item.getProductId());
+                cartItem.setSkuId(item.getSkuId());
+                cartItem.setQuantity(item.getQuantity());
+                cartItem.setAddTime(new Date());
+                cartMapper.insert(cartItem);
+            }
+            count++;
+        }
+        return Result.success("已加入购物车（" + count + " 件商品）");
     }
 
     // ==================== 私有辅助方法 ====================

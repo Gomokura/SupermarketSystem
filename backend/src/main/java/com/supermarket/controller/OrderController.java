@@ -154,8 +154,9 @@ public class OrderController {
     @PutMapping("/{orderId}/ship")
     public Result<?> shipOrder(
             @PathVariable Integer orderId,
+            @RequestAttribute Integer adminId,
             @RequestBody Map<String, String> body) {
-        return orderService.shipOrder(orderId, body.get("company"), body.get("trackingNo"));
+        return orderService.shipOrder(orderId, adminId, body.get("company"), body.get("trackingNo"));
     }
 
     /** 管理员按订单分配配送员 */

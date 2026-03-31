@@ -133,6 +133,8 @@ export const couponAPI = {
 export const reviewAPI = {
   getByProduct: (productId, params) => request.get(`/reviews/product/${productId}`, { params }),
   create: (data) => request.post('/reviews', data),
+  adminGetList: (params) => adminRequest.get('/reviews/admin/list', { params }),
+  adminDelete: (id) => adminRequest.delete(`/reviews/admin/${id}`),
   adminToggleHidden: (id, hidden) => adminRequest.put(`/reviews/admin/${id}/hidden`, null, { params: { hidden } }),
   adminReply: (id, reply) => adminRequest.put(`/reviews/admin/${id}/reply`, { reply })
 }

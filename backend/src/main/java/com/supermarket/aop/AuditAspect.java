@@ -61,17 +61,17 @@ public class AuditAspect {
 
         Integer targetId = extractLastNumber(uri);
 
-        AuditLog log = new AuditLog();
-        log.setOperatorId(operatorId);
-        log.setOperatorName(operatorName);
-        log.setModule(module);
-        log.setAction(action);
-        log.setTargetId(targetId);
-        log.setIpAddress(request.getRemoteAddr());
+        AuditLog auditEntry = new AuditLog();
+        auditEntry.setOperatorId(operatorId);
+        auditEntry.setOperatorName(operatorName);
+        auditEntry.setModule(module);
+        auditEntry.setAction(action);
+        auditEntry.setTargetId(targetId);
+        auditEntry.setIpAddress(request.getRemoteAddr());
         // before_data/after_data 不做快照（避免侵入业务逻辑）
 
         try {
-            auditLogMapper.insert(log);
+            auditLogMapper.insert(auditEntry);
         } catch (Exception e) {
             log.warn("审计日志写入失败: {}", e.getMessage());
         }

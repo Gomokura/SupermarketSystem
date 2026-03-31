@@ -38,7 +38,14 @@ request.interceptors.response.use(
       router.push('/login')
       ElMessage.error('登录已过期，请重新登录')
     } else {
-      ElMessage.error(error.response?.data?.message || '网络错误')
+      const msg = error.response?.data?.message
+      const noResponse = !error.response
+      ElMessage.error(
+        msg ||
+          (noResponse
+            ? '无法连接后端：请先启动 Spring Boot（默认 http://localhost:8080），并保证数据库可用'
+            : '网络错误')
+      )
     }
     return Promise.reject(error)
   }

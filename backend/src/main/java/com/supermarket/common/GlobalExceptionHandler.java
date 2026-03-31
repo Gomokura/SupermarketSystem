@@ -55,6 +55,14 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<?> handleException(Exception e) {
         log.error("系统异常", e);
-        return Result.error(500, "系统内部错误：" + e.getMessage());
+        String detail = e.getMessage();
+        if (detail == null || detail.isBlank()) {
+            detail = e.getClass().getSimpleName();
+            if (e.getCause() != null && e.getCause().getMessage() != null
+                    && !e.getCause().getMessage().isBlank()) {
+                detail = detail + "：" + e.getCause().getMessage();
+            }
+        }
+        return Result.error(500, "系统内部错误：" + detail);
     }
 }

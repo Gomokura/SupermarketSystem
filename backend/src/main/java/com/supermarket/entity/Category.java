@@ -18,7 +18,8 @@ public class Category {
     // 新增字段
     private Integer parentId;    // 父分类ID，0=一级分类
     private Integer sortOrder;   // 排序序号
-    private String icon;         // 分类图标路径
+    @TableField("icon_url")
+    private String icon;         // 分类图标路径（对应列 icon_url）
 
     // 非数据库字段（树形结构用）
     @TableField(exist = false)
