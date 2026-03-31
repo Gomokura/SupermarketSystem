@@ -1107,44 +1107,44 @@ PROMPT ============================================================
 PROMPT STEP 4: Insert Initial Data
 PROMPT ============================================================
 
--- [1] Admin accounts (passwords are plaintext here; backend uses BCrypt)
+-- [1] Admin accounts (passwords are MD5 hashes of plaintext)
 INSERT INTO admin_users (admin_id, username, password, real_name, phone, role, status)
-VALUES (seq_admin_users.NEXTVAL, 'admin', 'admin123', 'Admin User', '13000000001', 'SUPER_ADMIN', 'active');
+VALUES (seq_admin_users.NEXTVAL, 'admin', '0192023a7bbd73250516f069df18b500', 'Admin User', '13000000001', 'SUPER_ADMIN', 'active');
 
 INSERT INTO admin_users (admin_id, username, password, real_name, phone, role, status)
-VALUES (seq_admin_users.NEXTVAL, 'manager', 'manager123', 'Store Manager', '13000000002', 'MANAGER', 'active');
+VALUES (seq_admin_users.NEXTVAL, 'manager', '0795151defba7a4b5dfa89170de46277', 'Store Manager', '13000000002', 'MANAGER', 'active');
 
 INSERT INTO admin_users (admin_id, username, password, real_name, phone, role, status)
-VALUES (seq_admin_users.NEXTVAL, 'cashier01', 'cashier123', 'Cashier Wang', '13000000003', 'CASHIER', 'active');
+VALUES (seq_admin_users.NEXTVAL, 'cashier01', 'dbb8c54ee649f8af049357a5f99cede6', 'Cashier Wang', '13000000003', 'CASHIER', 'active');
 
 INSERT INTO admin_users (admin_id, username, password, real_name, phone, role, status)
-VALUES (seq_admin_users.NEXTVAL, 'warehouse01', 'warehouse123', 'Warehouse Li', '13000000004', 'WAREHOUSE', 'active');
+VALUES (seq_admin_users.NEXTVAL, 'warehouse01', 'e7bca0b30b7fdb9f0ecbb7832c5f5348', 'Warehouse Li', '13000000004', 'WAREHOUSE', 'active');
 
 INSERT INTO admin_users (admin_id, username, password, real_name, phone, role, status)
-VALUES (seq_admin_users.NEXTVAL, 'product01', 'product123', 'Product Chen', '13000000005', 'PRODUCT', 'active');
+VALUES (seq_admin_users.NEXTVAL, 'product01', '4751368fbef4cc9420716a698d0c393a', 'Product Chen', '13000000005', 'PRODUCT', 'active');
 
 INSERT INTO admin_users (admin_id, username, password, real_name, phone, role, status)
-VALUES (seq_admin_users.NEXTVAL, 'service01', 'service123', 'Service Zhao', '13000000006', 'SERVICE', 'active');
+VALUES (seq_admin_users.NEXTVAL, 'service01', '3df2c034f564ae53106c928b7278d1ca', 'Service Zhao', '13000000006', 'SERVICE', 'active');
 
 -- [2] Delivery persons
 INSERT INTO delivery_persons (courier_id, real_name, phone, password, status)
-VALUES (seq_delivery_persons.NEXTVAL, 'Courier Zhang', '13900000001', 'courier123', 'active');
+VALUES (seq_delivery_persons.NEXTVAL, 'Courier Zhang', '13900000001', '1ed4a8186a0606351d36115f28cc3793', 'active');
 
 INSERT INTO delivery_persons (courier_id, real_name, phone, password, status)
-VALUES (seq_delivery_persons.NEXTVAL, 'Courier Li', '13900000002', 'courier123', 'active');
+VALUES (seq_delivery_persons.NEXTVAL, 'Courier Li', '13900000002', '1ed4a8186a0606351d36115f28cc3793', 'active');
 
 INSERT INTO delivery_persons (courier_id, real_name, phone, password, status)
-VALUES (seq_delivery_persons.NEXTVAL, 'Courier Wang', '13900000003', 'courier123', 'active');
+VALUES (seq_delivery_persons.NEXTVAL, 'Courier Wang', '13900000003', '1ed4a8186a0606351d36115f28cc3793', 'active');
 
 -- [3] Customer users
 INSERT INTO users (user_id, username, password, nickname, real_name, phone, member_level, points, status)
-VALUES (seq_users.NEXTVAL, '13800138001', 'user123', 'UserA', 'Zhang San', '13800138001', 'SILVER', 520, 'active');
+VALUES (seq_users.NEXTVAL, '13800138001', '6ad14ba9986e3615423dfca256d04e3f', 'UserA', 'Zhang San', '13800138001', 'SILVER', 520, 'active');
 
 INSERT INTO users (user_id, username, password, nickname, real_name, phone, member_level, points, status)
-VALUES (seq_users.NEXTVAL, '13800138002', 'user123', 'UserB', 'Li Si', '13800138002', 'GOLD', 1200, 'active');
+VALUES (seq_users.NEXTVAL, '13800138002', '6ad14ba9986e3615423dfca256d04e3f', 'UserB', 'Li Si', '13800138002', 'GOLD', 1200, 'active');
 
 INSERT INTO users (user_id, username, password, nickname, real_name, phone, member_level, points, status)
-VALUES (seq_users.NEXTVAL, '13800138003', 'user123', 'TestUser', 'Wang Wu', '13800138003', 'NORMAL', 0, 'active');
+VALUES (seq_users.NEXTVAL, '13800138003', '6ad14ba9986e3615423dfca256d04e3f', 'TestUser', 'Wang Wu', '13800138003', 'NORMAL', 0, 'active');
 
 -- [4] Level-1 categories
 INSERT INTO categories (category_id, parent_id, category_name, sort_order, status, description)
