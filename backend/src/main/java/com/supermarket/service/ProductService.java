@@ -247,6 +247,7 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
     /**
      * 批量上下架
      */
+    @Transactional(rollbackFor = Exception.class)
     public Result<?> batchUpdateStatus(List<Integer> productIds, String status) {
         for (Integer id : productIds) {
             updateProductStatus(id, status);

@@ -33,7 +33,6 @@ public class Product {
     private String barcode;         // 商品条码
     private Integer isDeleted;      // 逻辑删除 0/1，数据库字段 IS_DELETED
     private Double costPrice;       // 成本价，数据库字段 COST_PRICE
-    private String images;         // 商品图片列表（逗号分隔）
 
     // 非数据库字段（联表查询用）
     @TableField(exist = false)

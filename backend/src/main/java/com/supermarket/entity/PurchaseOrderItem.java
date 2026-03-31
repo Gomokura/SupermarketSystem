@@ -13,10 +13,8 @@ public class PurchaseOrderItem {
     private Integer itemId;
     private Integer poId;
     private Integer productId;
-    @TableField("quantity")
-    private Integer orderQuantity;   // 采购数量，映射数据库 quantity
-    @TableField("actual_quantity")
-    private Integer arrivedQuantity; // 实际收货数量，映射数据库 actual_quantity
+    private Integer orderQuantity;   // 采购数量，数据库字段 ORDER_QUANTITY
+    private Integer arrivedQuantity; // 实际收货数量，数据库字段 ARRIVED_QUANTITY
     private Double unitPrice;
 
     // 非数据库字段

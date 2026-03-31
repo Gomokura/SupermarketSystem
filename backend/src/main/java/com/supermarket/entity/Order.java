@@ -1,6 +1,7 @@
 package com.supermarket.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -13,36 +14,55 @@ import java.util.List;
 public class Order {
     @TableId(type = IdType.AUTO)
     private Integer orderId;
+
+    private String orderNo;
     private Integer userId;
-    private String orderNo;           // 业务唯一订单号
-    private Integer addressId;        // 收货地址ID
-    private Double totalAmount;       // 商品总价
-    private Double discountAmount;    // 优惠金额
-    @TableField("PAY_AMOUNT")
-    private Double payAmount;         // 实付金额
-    @TableField("PAY_METHOD")
-    private String payMethod;         // 支付方式
-    private Integer couponId;         // 使用的优惠券ID
-    private Integer pointsUsed;       // 使用积分数
-    @TableField("STATUS")
-    private String status;            // 订单状态: pending/paid/shipped/completed/cancelled
-    @TableField("DELIVERY_PERSON_ID")
-    private Integer deliveryPersonId; // 配送员ID
-    private String remark;            // 订单备注
-    private Date payTime;             // 支付时间
-    @TableField("SHIP_TIME")
-    private Date shipTime;            // 发货时间
-    @TableField("COMPLETE_TIME")
-    private Date completeTime;        // 完成时间
-    @TableField("CANCEL_TIME")
-    private Date cancelTime;          // 取消时间
-    private Date createTime;          // 下单时间
-    private Double freight;           // 运费
-    private String addressSnapshot;   // 地址快照
-    private String source;            // 来源 online/cashier
-    private Integer cashierId;        // 收银员ID（收银台订单）
-    private Date deliveredAt;         // 实际到门时间
-    private String deliveryFailReason; // 配送失败原因
+    /** ONLINE / CASHIER */
+    private String source;
+    private Integer addressId;
+    /** 收货人信息快照（receiver + phone + province/city/district/detail） */
+    @TableField("RECEIVER_SNAPSHOT")
+    private String receiverSnapshot;
+
+    private Double totalAmount;
+    private Double discountAmount;
+    /** 优惠券抵扣金额（明细） */
+    private Double couponDiscount;
+    /** 积分抵扣金额（明细） */
+    private Double pointsDeductAmount;
+    @TableField("FREIGHT_AMOUNT")
+    private Double freightAmount;
+
+    private Double payAmount;
+    private String payMethod;
+    private Integer couponId;
+    /** user_coupons 的 UC_ID（核销用） */
+    private Integer ucId;
+    private Integer pointsUsed;
+
+    /** 期望配送时间段（如“明日上午”） */
+    private String deliveryTimeSlot;
+    private String expressCompany;
+    private String expressNo;
+
+    private String remark;
+    private String cancelReason;
+    private Double refundAmount;
+
+    /** PENDING_PAY / PAID / PENDING_SHIP / SHIPPING / PENDING_RECEIVED / COMPLETED / CANCELLED / REFUNDED */
+    private String status;
+
+    private Date payTime;
+    private Date shipTime;
+    private Date pickupTime;
+    @TableField("DELIVER_TIME")
+    private Date deliverTime;
+    private Date confirmTime;
+    private Date completeTime;
+    private Date cancelTime;
+    private Date refundTime;
+    private Date createTime;
+    private Date updateTime;
 
     // 非数据库字段
     @TableField(exist = false)

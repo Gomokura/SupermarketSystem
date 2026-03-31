@@ -1,4 +1,4 @@
-﻿import request from '@/utils/request'
+import request from '@/utils/request'
 
 export const authAPI = {
   login(data) {
@@ -187,7 +187,6 @@ export const stocktakeAPI = {
   getDetail: (taskId) => adminRequest.get(`/stocktake/${taskId}`),
   inputActual: (taskId, items) => adminRequest.put(`/stocktake/${taskId}/input`, { items }),
   submit: (taskId) => adminRequest.put(`/stocktake/${taskId}/submit`)
->>>>>>> Stashed changes
 }
 
 export const adminAPI = {

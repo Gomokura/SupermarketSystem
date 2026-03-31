@@ -1,18 +1,18 @@
-﻿<template>
+<template>
   <div class="page-container">
     <el-row :gutter="20">
       <el-col :span="16">
         <el-card class="mb-20">
           <template #header>
             <div class="card-header">
-              <span>鍩烘湰淇℃伅</span>
+              <span>基本信息</span>
             </div>
           </template>
           <el-form :model="profileForm" :rules="profileRules" ref="profileFormRef" label-width="100px">
-            <el-form-item label="鐢ㄦ埛鍚?>
+            <el-form-item label="用户名">
               <el-input v-model="profileForm.username" disabled />
             </el-form-item>
-            <el-form-item label="澶村儚">
+            <el-form-item label="头像">
               <div class="avatar-wrapper">
                 <el-avatar :size="80" :src="profileForm.avatarUrl || defaultAvatar" />
                 <el-upload
@@ -21,38 +21,38 @@
                   :http-request="handleAvatarUpload"
                   accept="image/*"
                 >
-                  <el-button size="small" type="primary" class="mt-10">鏇存崲澶村儚</el-button>
+                  <el-button size="small" type="primary" class="mt-10">更换头像</el-button>
                 </el-upload>
               </div>
             </el-form-item>
-            <el-form-item label="鐪熷疄濮撳悕" prop="realName">
-              <el-input v-model="profileForm.realName" placeholder="璇疯緭鍏ョ湡瀹炲鍚? />
+            <el-form-item label="真实姓名" prop="realName">
+              <el-input v-model="profileForm.realName" placeholder="请输入真实姓名" />
             </el-form-item>
-            <el-form-item label="鎬у埆" prop="gender">
+            <el-form-item label="性别" prop="gender">
               <el-radio-group v-model="profileForm.gender">
-                <el-radio label="鐢?>鐢?/el-radio>
-                <el-radio label="濂?>濂?/el-radio>
-                <el-radio label="鏈煡">鏈煡</el-radio>
+                <el-radio label="男">男</el-radio>
+                <el-radio label="女">女</el-radio>
+                <el-radio label="未知">未知</el-radio>
               </el-radio-group>
             </el-form-item>
-            <el-form-item label="鐢熸棩" prop="birthday">
+            <el-form-item label="生日" prop="birthday">
               <el-date-picker
                 v-model="profileForm.birthday"
                 type="date"
-                placeholder="閫夋嫨鐢熸棩"
+                placeholder="选择生日"
                 format="YYYY-MM-DD"
                 value-format="YYYY-MM-DD"
                 style="width: 100%"
               />
             </el-form-item>
-            <el-form-item label="閭" prop="email">
-              <el-input v-model="profileForm.email" placeholder="璇疯緭鍏ラ偖绠? />
+            <el-form-item label="邮箱" prop="email">
+              <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
             </el-form-item>
-            <el-form-item label="鎵嬫満鍙? prop="phone">
-              <el-input v-model="profileForm.phone" placeholder="璇疯緭鍏ユ墜鏈哄彿" />
+            <el-form-item label="手机号" prop="phone">
+              <el-input v-model="profileForm.phone" placeholder="请输入手机号" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" :loading="profileLoading" @click="saveProfile">淇濆瓨淇敼</el-button>
+              <el-button type="primary" :loading="profileLoading" @click="saveProfile">保存修改</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -62,7 +62,7 @@
         <el-card class="mb-20">
           <template #header>
             <div class="card-header">
-              <span>浼氬憳淇℃伅</span>
+              <span>会员信息</span>
             </div>
           </template>
           <div class="member-info">
@@ -76,15 +76,15 @@
           </div>
           <el-divider />
           <div class="stat-item">
-            <div class="stat-label">褰撳墠绉垎</div>
+            <div class="stat-label">当前积分</div>
             <div class="stat-value">{{ pointsBalance }}</div>
           </div>
           <div class="stat-item">
-            <div class="stat-label">鎴戠殑鏀惰棌</div>
+            <div class="stat-label">我的收藏</div>
             <div class="stat-value">{{ favoriteCount }}</div>
           </div>
           <div class="stat-item">
-            <div class="stat-label">鎴戠殑浼樻儬鍒?/div>
+            <div class="stat-label">我的优惠券</div>
             <div class="stat-value">{{ couponCount }}</div>
           </div>
         </el-card>
@@ -92,21 +92,21 @@
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>淇敼瀵嗙爜</span>
+              <span>修改密码</span>
             </div>
           </template>
           <el-form :model="pwdForm" :rules="pwdRules" ref="pwdFormRef" label-width="90px">
-            <el-form-item label="鏃у瘑鐮? prop="oldPassword">
-              <el-input v-model="pwdForm.oldPassword" type="password" show-password placeholder="璇疯緭鍏ユ棫瀵嗙爜" />
+            <el-form-item label="旧密码" prop="oldPassword">
+              <el-input v-model="pwdForm.oldPassword" type="password" show-password placeholder="请输入旧密码" />
             </el-form-item>
-            <el-form-item label="鏂板瘑鐮? prop="newPassword">
-              <el-input v-model="pwdForm.newPassword" type="password" show-password placeholder="璇疯緭鍏ユ柊瀵嗙爜" />
+            <el-form-item label="新密码" prop="newPassword">
+              <el-input v-model="pwdForm.newPassword" type="password" show-password placeholder="请输入新密码" />
             </el-form-item>
-            <el-form-item label="纭瀵嗙爜" prop="confirmPassword">
-              <el-input v-model="pwdForm.confirmPassword" type="password" show-password placeholder="璇峰啀娆¤緭鍏ユ柊瀵嗙爜" />
+            <el-form-item label="确认密码" prop="confirmPassword">
+              <el-input v-model="pwdForm.confirmPassword" type="password" show-password placeholder="请再次输入新密码" />
             </el-form-item>
             <el-form-item>
-              <el-button type="warning" :loading="pwdLoading" @click="changePassword">淇敼瀵嗙爜</el-button>
+              <el-button type="warning" :loading="pwdLoading" @click="changePassword">修改密码</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -139,14 +139,14 @@ const profileForm = reactive({
   realName: '',
   phone: '',
   avatarUrl: '',
-  gender: '鏈煡',
+  gender: '未知',
   birthday: '',
   email: ''
 })
 
 const validateConfirmPassword = (rule, value, callback) => {
   if (value !== pwdForm.newPassword) {
-    callback(new Error('涓ゆ杈撳叆鐨勫瘑鐮佷笉涓€鑷?))
+    callback(new Error('两次输入的密码不一致'))
   } else {
     callback()
   }
@@ -154,23 +154,23 @@ const validateConfirmPassword = (rule, value, callback) => {
 
 const profileRules = {
   email: [
-    { type: 'email', message: '璇疯緭鍏ユ纭殑閭鏍煎紡', trigger: 'blur' }
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
   ],
   phone: [
-    { pattern: /^1[3-9]\d{9}$/, message: '璇疯緭鍏ユ纭殑鎵嬫満鍙?, trigger: 'blur' }
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
   ]
 }
 
 const pwdRules = {
   oldPassword: [
-    { required: true, message: '璇疯緭鍏ユ棫瀵嗙爜', trigger: 'blur' }
+    { required: true, message: '请输入旧密码', trigger: 'blur' }
   ],
   newPassword: [
-    { required: true, message: '璇疯緭鍏ユ柊瀵嗙爜', trigger: 'blur' },
-    { min: 6, message: '瀵嗙爜闀垮害涓嶈兘灏戜簬6浣?, trigger: 'blur' }
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
   ],
   confirmPassword: [
-    { required: true, message: '璇峰啀娆¤緭鍏ユ柊瀵嗙爜', trigger: 'blur' },
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
     { validator: validateConfirmPassword, trigger: 'blur' }
   ]
 }
@@ -183,16 +183,16 @@ const pwdForm = reactive({
 
 const memberLevel = computed(() => {
   const p = pointsBalance.value
-  if (p >= 10000) return '閽荤煶'
-  if (p >= 5000) return '閲戝崱'
-  if (p >= 1000) return '閾跺崱'
-  return '鏅€?
+  if (p >= 10000) return '钻石'
+  if (p >= 5000) return '金卡'
+  if (p >= 1000) return '银卡'
+  return '普通'
 })
 
-const memberLevelText = computed(() => `${memberLevel.value}浼氬憳`)
+const memberLevelText = computed(() => `${memberLevel.value}会员`)
 
 const memberTagType = computed(() => {
-  const map = { '鏅€?: 'info', '閾跺崱': 'success', '閲戝崱': 'warning', '閽荤煶': 'danger' }
+  const map = { '普通': 'info', '银卡': 'success', '金卡': 'warning', '钻石': 'danger' }
   return map[memberLevel.value] || 'info'
 })
 
@@ -210,7 +210,7 @@ const loadUserInfo = async () => {
       realName: data.realName || '',
       phone: data.phone || '',
       avatarUrl: data.avatarUrl || '',
-      gender: data.gender || '鏈煡',
+      gender: data.gender || '未知',
       birthday: data.birthday || '',
       email: data.email || ''
     })
@@ -218,7 +218,6 @@ const loadUserInfo = async () => {
   } catch (error) {
     console.error(error)
   }
->>>>>>> Stashed changes
 }
 
 const loadPoints = async () => {
@@ -261,7 +260,7 @@ const saveProfile = async () => {
       email: profileForm.email
     })
     userStore.setUserInfo({ ...userStore.userInfo, ...profileForm })
-    ElMessage.success('淇濆瓨鎴愬姛')
+    ElMessage.success('保存成功')
   } catch (error) {
     console.error(error)
   } finally {
@@ -280,12 +279,12 @@ const handleAvatarUpload = async ({ file }) => {
     }).then(r => r.json())
     if (res.code === 200) {
       profileForm.avatarUrl = res.data
-      ElMessage.success('澶村儚涓婁紶鎴愬姛锛岃鐐瑰嚮淇濆瓨')
+      ElMessage.success('头像上传成功，请点击保存')
     } else {
-      ElMessage.error(res.message || '涓婁紶澶辫触')
+      ElMessage.error(res.message || '上传失败')
     }
   } catch (error) {
-    ElMessage.error('涓婁紶澶辫触')
+    ElMessage.error('上传失败')
     console.error(error)
   }
 }
@@ -298,7 +297,7 @@ const changePassword = async () => {
       oldPassword: pwdForm.oldPassword,
       newPassword: pwdForm.newPassword
     })
-    ElMessage.success('瀵嗙爜淇敼鎴愬姛')
+    ElMessage.success('密码修改成功')
     pwdForm.oldPassword = ''
     pwdForm.newPassword = ''
     pwdForm.confirmPassword = ''

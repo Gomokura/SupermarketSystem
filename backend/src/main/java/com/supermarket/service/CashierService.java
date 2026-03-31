@@ -1,299 +1,318 @@
 package com.supermarket.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.supermarket.common.BusinessException;
 import com.supermarket.common.Result;
-import com.supermarket.entity.*;
-import com.supermarket.mapper.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.supermarket.dto.CreateOrderRequest;
+import com.supermarket.entity.CashierRecord;
+import com.supermarket.entity.CashierRecordItem;
+import com.supermarket.entity.CashierShift;
+import com.supermarket.entity.Order;
+import com.supermarket.entity.OrderItem;
+import com.supermarket.entity.Product;
+import com.supermarket.entity.ProductSku;
+import com.supermarket.entity.User;
+import com.supermarket.entity.UserCoupon;
+import com.supermarket.mapper.CashierShiftMapper;
+import com.supermarket.mapper.CashierRecordMapper;
+import com.supermarket.mapper.CashierRecordItemMapper;
+import com.supermarket.mapper.CouponMapper;
+import com.supermarket.mapper.OrderItemMapper;
+import com.supermarket.mapper.OrderMapper;
+import com.supermarket.mapper.ProductMapper;
+import com.supermarket.mapper.ProductSkuMapper;
+import com.supermarket.mapper.UserCouponMapper;
+import com.supermarket.mapper.UserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift> {
 
-    @Autowired private CashierShiftMapper cashierShiftMapper;
-    @Autowired private OrderMapper orderMapper;
-    @Autowired private OrderItemMapper orderItemMapper;
-    @Autowired private ProductMapper productMapper;
-    @Autowired private ProductSkuMapper productSkuMapper;
+    private final CashierRecordMapper cashierRecordMapper;
+    private final CashierRecordItemMapper cashierRecordItemMapper;
+    private final ProductMapper productMapper;
+    private final ProductSkuMapper productSkuMapper;
+    private final UserMapper userMapper;
+    private final UserCouponMapper userCouponMapper;
+    private final CouponMapper couponMapper;
+    private final OrderMapper orderMapper;
+    private final OrderItemMapper orderItemMapper;
+    private final OrderService orderService;
 
-    // ==================== 班次管理 ====================
+    public CashierService(CashierRecordMapper cashierRecordMapper,
+                          CashierRecordItemMapper cashierRecordItemMapper,
+                          ProductMapper productMapper,
+                          ProductSkuMapper productSkuMapper,
+                          UserMapper userMapper,
+                          UserCouponMapper userCouponMapper,
+                          CouponMapper couponMapper,
+                          OrderMapper orderMapper,
+                          OrderItemMapper orderItemMapper,
+                          OrderService orderService) {
+        this.cashierRecordMapper = cashierRecordMapper;
+        this.cashierRecordItemMapper = cashierRecordItemMapper;
+        this.productMapper = productMapper;
+        this.productSkuMapper = productSkuMapper;
+        this.userMapper = userMapper;
+        this.userCouponMapper = userCouponMapper;
+        this.couponMapper = couponMapper;
+        this.orderMapper = orderMapper;
+        this.orderItemMapper = orderItemMapper;
+        this.orderService = orderService;
+    }
 
-    /**
-     * 开班（创建新班次）
-     * 只有在没有未关闭班次时才能开班
-     */
+    /** 开班 */
     @Transactional
     public Result<?> openShift(Integer cashierId, Double startCash) {
-        // 检查是否存在未关闭班次
-        LambdaQueryWrapper<CashierShift> openWrapper = new LambdaQueryWrapper<>();
-        openWrapper.eq(CashierShift::getCashierId, cashierId)
-                   .eq(CashierShift::getStatus, "open");
-        if (this.count(openWrapper) > 0) {
-            throw new BusinessException("当前有未关闭的班次，请先交班");
-        }
+        // 检查是否已有开班中的班次
+        LambdaQueryWrapper<CashierShift> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CashierShift::getCashierId, cashierId).eq(CashierShift::getStatus, "OPEN");
+        if (this.count(wrapper) > 0) return Result.error("已有开班中的班次，请先交班");
 
         CashierShift shift = new CashierShift();
         shift.setCashierId(cashierId);
         shift.setStartCash(startCash != null ? startCash : 0.0);
-        shift.setTotalOrders(0);
-        shift.setCashTotal(0.0);
-        shift.setSimPayTotal(0.0);
+        shift.setTotalOrderCount(0);
+        shift.setTotalCashAmount(0.0);
+        shift.setTotalMockAmount(0.0);
+        shift.setStatus("OPEN");
         shift.setStartTime(new Date());
-        shift.setStatus("open");
         this.save(shift);
-
         return Result.success(shift);
     }
 
-    /**
-     * 交班（关闭班次）
-     * 自动汇总本班现金/模拟支付订单数、金额
-     */
+    /** 获取当前班次 */
+    public Result<?> getCurrentShift(Integer cashierId) {
+        LambdaQueryWrapper<CashierShift> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CashierShift::getCashierId, cashierId).eq(CashierShift::getStatus, "OPEN");
+        CashierShift shift = this.getOne(wrapper);
+        if (shift == null) return Result.error(404, "无开班中的班次");
+        return Result.success(shift);
+    }
+
+    /** 交班 */
     @Transactional
     public Result<?> closeShift(Integer cashierId, Double endCash) {
-        CashierShift shift = getCurrentOpenShift(cashierId);
-        if (shift == null) throw new BusinessException(404, "没有未关闭的班次");
+        LambdaQueryWrapper<CashierShift> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CashierShift::getCashierId, cashierId).eq(CashierShift::getStatus, "OPEN");
+        CashierShift shift = this.getOne(wrapper);
+        if (shift == null) return Result.error("无开班中的班次");
 
-        // 汇总本班所有收银订单
-        List<Order> shiftOrders = getShiftOrders(shift.getShiftId(), cashierId);
-
-        int totalOrders = 0;
-        double cashTotal = 0.0;
-        double simPayTotal = 0.0;
-
-        for (Order order : shiftOrders) {
-            totalOrders++;
-            if ("CASH".equals(order.getPayMethod())) {
-                cashTotal += order.getPayAmount() != null ? order.getPayAmount() : 0;
-            } else {
-                simPayTotal += order.getPayAmount() != null ? order.getPayAmount() : 0;
-            }
-        }
-
-        shift.setTotalOrders(totalOrders);
-        shift.setCashTotal(cashTotal);
-        shift.setSimPayTotal(simPayTotal);
-        shift.setEndCash(endCash != null ? endCash : 0.0);
+        shift.setEndCash(endCash);
+        shift.setStatus("CLOSED");
         shift.setEndTime(new Date());
-        shift.setStatus("closed");
+        Double cashDiff = endCash != null
+                ? (endCash - (shift.getStartCash() != null ? shift.getStartCash() : 0.0)
+                - (shift.getTotalCashAmount() != null ? shift.getTotalCashAmount() : 0.0))
+                : null;
+        shift.setCashDiff(cashDiff);
         this.updateById(shift);
 
-        return Result.success(shift);
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("shift", shift);
+        summary.put("cashDiff", cashDiff);
+        return Result.success(summary);
     }
 
-    /**
-     * 当前班次状态查询
-     */
-    public Result<?> getCurrentShift(Integer cashierId) {
-        CashierShift shift = getCurrentOpenShift(cashierId);
-        if (shift == null) {
-            return Result.success(null); // 无未关闭班次
-        }
-
-        // 实时汇总当前班次数据
-        List<Order> shiftOrders = getShiftOrders(shift.getShiftId(), cashierId);
-        Map<String, Object> data = buildShiftData(shift, shiftOrders);
-        return Result.success(data);
-    }
-
-    /**
-     * 班次历史记录
-     */
-    public Result<?> getShiftHistory(Integer cashierId, Integer pageNum, Integer pageSize) {
+    /** 班次统计更新（由 OrderService 调用） */
+    @Transactional
+    public void recordShiftOrder(Integer cashierId, String payMethod, Double amount) {
         LambdaQueryWrapper<CashierShift> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CashierShift::getCashierId, cashierId)
-               .orderByDesc(CashierShift::getStartTime);
-        Page<CashierShift> page = new Page<>(pageNum, pageSize);
-        Page<CashierShift> result = this.page(page, wrapper);
-
-        for (CashierShift shift : result.getRecords()) {
-            List<Order> orders = getShiftOrders(shift.getShiftId(), cashierId);
-            Map<String, Object> data = buildShiftData(shift, orders);
-            shift.setTotalOrders(orders.size());
-            shift.setCashTotal(data.get("cashTotal") != null ? (Double) data.get("cashTotal") : 0.0);
-            shift.setSimPayTotal(data.get("simPayTotal") != null ? (Double) data.get("simPayTotal") : 0.0);
-        }
-
-        return Result.success(result);
-    }
-
-    /**
-     * 班次差额报表
-     * 计算：理论现金 = startCash + cashTotal，应收现金 = endCash，差异 = endCash - 理论现金
-     */
-    public Result<?> getShiftReport(Integer shiftId) {
-        CashierShift shift = this.getById(shiftId);
-        if (shift == null) throw new BusinessException(404, "班次不存在");
-
-        List<Order> orders = getShiftOrders(shiftId, shift.getCashierId());
-
-        double cashTotal = 0.0;
-        double simPayTotal = 0.0;
-        double totalRevenue = 0.0;
-        int orderCount = 0;
-        double cashOrderTotal = 0.0;
-        double cardOrderTotal = 0.0;
-        double otherOrderTotal = 0.0;
-
-        for (Order order : orders) {
-            orderCount++;
-            double payAmount = order.getPayAmount() != null ? order.getPayAmount() : 0;
-            totalRevenue += payAmount;
-
-            if ("CASH".equals(order.getPayMethod())) {
-                cashTotal += payAmount;
-                cashOrderTotal += payAmount;
-            } else if ("MOCK_CARD".equals(order.getPayMethod()) || "CARD".equals(order.getPayMethod())) {
-                simPayTotal += payAmount;
-                cardOrderTotal += payAmount;
-            } else {
-                simPayTotal += payAmount;
-                otherOrderTotal += payAmount;
-            }
-        }
-
-        double theoreticalCash = (shift.getStartCash() != null ? shift.getStartCash() : 0)
-                               + cashTotal;
-        double actualCash = shift.getEndCash() != null ? shift.getEndCash() : 0;
-        double difference = actualCash - theoreticalCash;
-
-        Map<String, Object> report = new LinkedHashMap<>();
-        report.put("shiftId", shift.getShiftId());
-        report.put("cashierId", shift.getCashierId());
-        report.put("startTime", shift.getStartTime());
-        report.put("endTime", shift.getEndTime());
-        report.put("startCash", shift.getStartCash());        // 备用金
-        report.put("cashTotal", cashTotal);                   // 本班现金收款
-        report.put("simPayTotal", simPayTotal);               // 本班非现金收款
-        report.put("totalRevenue", totalRevenue);             // 本班总收入
-        report.put("orderCount", orderCount);                 // 本班总单数
-        report.put("cashOrderCount", orders.stream().filter(o -> "CASH".equals(o.getPayMethod())).count());
-        report.put("cardOrderCount", orders.stream().filter(o -> "CARD".equals(o.getPayMethod()) || "MOCK_CARD".equals(o.getPayMethod())).count());
-        report.put("cashOrderTotal", cashOrderTotal);
-        report.put("cardOrderTotal", cardOrderTotal);
-        report.put("otherOrderTotal", otherOrderTotal);
-        report.put("theoreticalCash", Math.round(theoreticalCash * 100.0) / 100.0); // 理论现金
-        report.put("actualCash", actualCash);                // 实收现金
-        report.put("difference", Math.round(difference * 100.0) / 100.0);          // 差异（长款/短款）
-        report.put("status", shift.getStatus());
-
-        return Result.success(report);
-    }
-
-    /**
-     * 收银台汇总统计（当前班次）
-     */
-    public Result<?> getShiftSummary(Integer shiftId, Integer cashierId) {
-        CashierShift shift = this.getById(shiftId);
-        if (shift == null) throw new BusinessException(404, "班次不存在");
-        if (!shift.getCashierId().equals(cashierId)) throw new BusinessException(403, "无权查看");
-
-        List<Order> orders = getShiftOrders(shiftId, cashierId);
-        Map<String, Object> data = buildShiftData(shift, orders);
-        return Result.success(data);
-    }
-
-    // ==================== 收银台商品搜索 ====================
-
-    /**
-     * 商品快速搜索（收银台扫码/关键字）
-     * 支持条码精确搜索 + 关键字模糊搜索
-     */
-    public Result<?> searchProducts(String keyword, String barcode, Integer pageNum, Integer pageSize) {
-        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Product::getIsDeleted, 0);
-
-        if (StringUtils.hasText(barcode)) {
-            // 优先按条码精确搜索
-            wrapper.eq(Product::getBarcode, barcode);
-        } else if (StringUtils.hasText(keyword)) {
-            // 关键字模糊搜索商品名
-            wrapper.like(Product::getProductName, keyword);
+        wrapper.eq(CashierShift::getCashierId, cashierId).eq(CashierShift::getStatus, "OPEN");
+        CashierShift shift = this.getOne(wrapper);
+        if (shift == null) return;
+        shift.setTotalOrderCount((shift.getTotalOrderCount() != null ? shift.getTotalOrderCount() : 0) + 1);
+        if ("CASH".equalsIgnoreCase(payMethod)) {
+            shift.setTotalCashAmount((shift.getTotalCashAmount() != null ? shift.getTotalCashAmount() : 0.0) + amount);
         } else {
-            return Result.error("请输入条码或关键字");
+            shift.setTotalMockAmount((shift.getTotalMockAmount() != null ? shift.getTotalMockAmount() : 0.0) + amount);
         }
-
-        wrapper.orderByDesc(Product::getSalesCount);
-        Page<Product> page = new Page<>(pageNum, pageSize);
-        Page<Product> result = productMapper.selectPage(page, wrapper);
-
-        // 填充 SKU 列表
-        for (Product product : result.getRecords()) {
-            LambdaQueryWrapper<ProductSku> skuWrapper = new LambdaQueryWrapper<>();
-            skuWrapper.eq(ProductSku::getProductId, product.getProductId())
-                      .eq(ProductSku::getStatus, "active");
-            List<ProductSku> skus = productSkuMapper.selectList(skuWrapper);
-            product.setSkus(skus);
-        }
-
-        return Result.success(result);
+        this.updateById(shift);
     }
 
-    // ==================== 私有辅助方法 ====================
-
-    private CashierShift getCurrentOpenShift(Integer cashierId) {
+    /** 历史班次列表 */
+    public Result<?> getShiftHistory(Integer cashierId) {
         LambdaQueryWrapper<CashierShift> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CashierShift::getCashierId, cashierId)
-               .eq(CashierShift::getStatus, "open")
-               .orderByDesc(CashierShift::getStartTime)
-               .last("FETCH FIRST 1 ROWS ONLY");
-        return this.getOne(wrapper);
+        wrapper.eq(CashierShift::getCashierId, cashierId).orderByDesc(CashierShift::getStartTime);
+        List<CashierShift> list = this.list(wrapper);
+        return Result.success(list);
+    }
+
+    /** K-05: 搜索商品（支持 keyword 或 barcode） */
+    public Result<?> searchProducts(String keywordOrBarcode, Integer limit) {
+        int n = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
+        LambdaQueryWrapper<Product> w = new LambdaQueryWrapper<>();
+        w.eq(Product::getIsDeleted, 0)
+                .and(x -> x.like(Product::getProductName, keywordOrBarcode)
+                        .or().like(Product::getBarcode, keywordOrBarcode))
+                .orderByAsc(Product::getProductName);
+        List<Product> list = productMapper.selectList(w);
+        if (list.size() > n) list = list.subList(0, n);
+        return Result.success(list);
     }
 
     /**
-     * 获取指定班次的所有收银订单（按班次开始时间过滤）
-     */
-    private List<Order> getShiftOrders(Integer shiftId, Integer cashierId) {
-        CashierShift shift = this.getById(shiftId);
-        if (shift == null) return Collections.emptyList();
+        * K-10~K-12: 收银结账
+        * 说明：会创建一笔 CASHIER 订单（用于报表/库存）+ 一笔 cashier_records（用于班次报表/POS小票）
+        */
+    @Transactional
+    public Result<?> checkout(Integer cashierId,
+                              String memberPhone,
+                              Integer couponId,
+                              String payMethod,
+                              Double receivedAmount,
+                              List<Map<String, Object>> items) {
+        CashierShift shift = (CashierShift) getCurrentShift(cashierId).getData();
+        if (shift == null) throw new BusinessException("请先开班");
 
-        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Order::getSource, "CASHIER")
-               .eq(Order::getCashierId, cashierId)
-               .ge(Order::getCreateTime, shift.getStartTime());
-        if (shift.getEndTime() != null) {
-            wrapper.le(Order::getCreateTime, shift.getEndTime());
-        }
-        return orderMapper.selectList(wrapper);
-    }
-
-    /**
-     * 构建班次数据（汇总统计）
-     */
-    private Map<String, Object> buildShiftData(CashierShift shift, List<Order> orders) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("shiftId", shift.getShiftId());
-        data.put("cashierId", shift.getCashierId());
-        data.put("startTime", shift.getStartTime());
-        data.put("endTime", shift.getEndTime());
-        data.put("startCash", shift.getStartCash());
-        data.put("endCash", shift.getEndCash());
-        data.put("status", shift.getStatus());
-
-        double cashTotal = 0.0;
-        double simPayTotal = 0.0;
-        int orderCount = orders.size();
-
-        for (Order order : orders) {
-            double amount = order.getPayAmount() != null ? order.getPayAmount() : 0;
-            if ("CASH".equals(order.getPayMethod())) {
-                cashTotal += amount;
-            } else {
-                simPayTotal += amount;
+        Integer userId = null;
+        String memberSnapshot = null;
+        Integer ucId = null;
+        if (memberPhone != null && !memberPhone.isEmpty()) {
+            User u = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getPhone, memberPhone));
+            if (u != null) {
+                userId = u.getUserId();
+                memberSnapshot = memberPhone;
+                if (couponId != null) {
+                    UserCoupon uc = userCouponMapper.selectOne(new LambdaQueryWrapper<UserCoupon>()
+                            .eq(UserCoupon::getUserId, userId)
+                            .eq(UserCoupon::getCouponId, couponId)
+                            .eq(UserCoupon::getStatus, "unused")
+                            .orderByAsc(UserCoupon::getGetTime)
+                            .last("FETCH FIRST 1 ROWS ONLY"));
+                    if (uc != null) ucId = uc.getUcId();
+                }
             }
         }
 
-        data.put("orderCount", orderCount);
-        data.put("cashTotal", Math.round(cashTotal * 100.0) / 100.0);
-        data.put("simPayTotal", Math.round(simPayTotal * 100.0) / 100.0);
-        data.put("totalRevenue", Math.round((cashTotal + simPayTotal) * 100.0) / 100.0);
-        return data;
+        // 1) 组装为 OrderService 的 items（复用库存扣减与订单落库）
+        List<CreateOrderRequest.CartItem> orderItems = new ArrayList<>();
+        for (Map<String, Object> raw : items) {
+            CreateOrderRequest.CartItem it = new CreateOrderRequest.CartItem();
+            it.setProductId((Integer) raw.get("productId"));
+            it.setSkuId((Integer) raw.get("skuId"));
+            it.setQuantity(((Number) raw.get("quantity")).intValue());
+            orderItems.add(it);
+        }
+        // 2) 创建收银订单（订单侧不做会员券抵扣，券抵扣走 cashier_records 展示；库存仍以订单出库为准）
+        Result<?> orderRet = orderService.cashierCreateOrder(cashierId, orderItems, payMethod, receivedAmount);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> orderData = (Map<String, Object>) orderRet.getData();
+        Integer orderId = orderData != null ? (Integer) orderData.get("orderId") : null;
+        Double totalAmount = orderData != null ? ((Number) orderData.get("totalAmount")).doubleValue() : null;
+
+        // 3) 计算优惠券抵扣（POS 场景：折扣直接从 totalAmount 减）
+        double discountAmount = 0.0;
+        if (userId != null && couponId != null && ucId != null && totalAmount != null) {
+            var c = couponMapper.selectById(couponId);
+            if (c != null && "active".equalsIgnoreCase(c.getStatus())) {
+                double min = c.getMinAmount() != null ? c.getMinAmount() : 0.0;
+                if (totalAmount >= min) {
+                    if ("discount".equalsIgnoreCase(c.getCouponType())) {
+                        double face = c.getFaceValue() != null ? c.getFaceValue() : 0;
+                        if (face > 0 && face < 1) discountAmount = totalAmount * (1 - face);
+                    } else {
+                        double face = c.getFaceValue() != null ? c.getFaceValue() : 0;
+                        discountAmount = Math.min(face, totalAmount);
+                    }
+                }
+            }
+        }
+        discountAmount = Math.round(discountAmount * 100.0) / 100.0;
+        double payAmount = Math.max(0, (totalAmount != null ? totalAmount : 0.0) - discountAmount);
+
+        double change = 0.0;
+        if ("CASH".equalsIgnoreCase(payMethod)) {
+            if (receivedAmount == null) throw new BusinessException("现金支付必须填写实收金额");
+            if (receivedAmount < payAmount) throw new BusinessException("实收金额不足");
+            change = Math.round((receivedAmount - payAmount) * 100.0) / 100.0;
+        }
+
+        // 4) 写 cashier_records + items
+        CashierRecord record = new CashierRecord();
+        record.setShiftId(shift.getShiftId());
+        record.setUserId(userId);
+        record.setMemberPhone(memberSnapshot);
+        record.setTotalAmount(totalAmount);
+        record.setDiscountAmount(discountAmount);
+        record.setCouponId(couponId);
+        record.setUcId(ucId);
+        record.setPayAmount(payAmount);
+        record.setPayMethod(payMethod != null ? payMethod : "CASH");
+        record.setReceivedAmount(receivedAmount);
+        record.setChangeAmount(change);
+        record.setCashierId(cashierId);
+        record.setCreateTime(new Date());
+        cashierRecordMapper.insert(record);
+
+        for (CreateOrderRequest.CartItem it : orderItems) {
+            Product p = productMapper.selectById(it.getProductId());
+            if (p == null) continue;
+            Double unit = p.getPrice();
+            String skuName = null;
+            if (it.getSkuId() != null) {
+                ProductSku sku = productSkuMapper.selectById(it.getSkuId());
+                if (sku != null) {
+                    unit = sku.getPrice();
+                    skuName = sku.getSkuName();
+                }
+            }
+            CashierRecordItem cri = new CashierRecordItem();
+            cri.setRecordId(record.getRecordId());
+            cri.setProductId(it.getProductId());
+            cri.setSkuId(it.getSkuId());
+            cri.setProductName(p.getProductName());
+            cri.setSkuName(skuName);
+            cri.setUnitPrice(unit);
+            cri.setQuantity(it.getQuantity());
+            cri.setSubtotal(Math.round(unit * it.getQuantity() * 100.0) / 100.0);
+            cashierRecordItemMapper.insert(cri);
+        }
+
+        // 5) 班次统计
+        recordShiftOrder(cashierId, payMethod, payAmount);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("orderId", orderId);
+        data.put("recordId", record.getRecordId());
+        data.put("orderNo", orderData != null ? orderData.get("orderNo") : null);
+        data.put("totalAmount", totalAmount);
+        data.put("discountAmount", discountAmount);
+        data.put("payAmount", payAmount);
+        data.put("receivedAmount", receivedAmount);
+        data.put("changeAmount", change);
+        return Result.success(data);
+    }
+
+    /** K-13: 按订单号查询收银订单（用于退款） */
+    public Result<?> findCashierOrder(String orderNo) {
+        if (orderNo == null || orderNo.isEmpty()) return Result.error("orderNo不能为空");
+        Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
+                .eq(Order::getOrderNo, orderNo)
+                .eq(Order::getSource, "CASHIER"));
+        if (order == null) return Result.error(404, "订单不存在");
+        List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>()
+                .eq(OrderItem::getOrderId, order.getOrderId()));
+        order.setItems(items);
+        return Result.success(order);
+    }
+
+    /** K-14: 收银台退款（整单退款，库存回滚） */
+    @Transactional
+    public Result<?> refundCashierOrder(Integer cashierId, String orderNo, String reason) {
+        Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
+                .eq(Order::getOrderNo, orderNo)
+                .eq(Order::getSource, "CASHIER"));
+        if (order == null) return Result.error(404, "订单不存在");
+        if (!"COMPLETED".equals(order.getStatus())) return Result.error("只有已完成订单可退款");
+        return orderService.refundCashierOrder(order.getOrderId(), cashierId, reason);
     }
 }

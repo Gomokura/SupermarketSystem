@@ -16,12 +16,55 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class CouponService extends ServiceImpl<CouponMapper, Coupon> {
 
     @Autowired private UserCouponMapper userCouponMapper;
+
+    /** C端：优惠券中心（可领取） */
+    public Result<?> couponCenter(Integer userId) {
+        Date now = new Date();
+        List<Coupon> all = this.list(new LambdaQueryWrapper<Coupon>()
+                .eq(Coupon::getStatus, "active")
+                .le(Coupon::getStartTime, now)
+                .ge(Coupon::getEndTime, now)
+                .orderByDesc(Coupon::getCreateTime));
+
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Coupon c : all) {
+            long claimed = userCouponMapper.selectCount(new LambdaQueryWrapper<UserCoupon>()
+                    .eq(UserCoupon::getUserId, userId)
+                    .eq(UserCoupon::getCouponId, c.getCouponId()));
+            int perLimit = c.getPerLimit() == null ? 1 : c.getPerLimit();
+            int total = c.getTotalCount() == null ? 0 : c.getTotalCount();
+            int issued = c.getIssuedCount() == null ? 0 : c.getIssuedCount();
+            boolean stockOk = total <= 0 || issued < total;
+            boolean canClaim = stockOk && (perLimit < 0 || claimed < perLimit);
+
+            Map<String, Object> row = new HashMap<>();
+            row.put("couponId", c.getCouponId());
+            row.put("couponName", c.getCouponName());
+            row.put("description", c.getDescription());
+            row.put("couponType", c.getCouponType());
+            row.put("faceValue", c.getFaceValue());
+            row.put("minAmount", c.getMinAmount());
+            row.put("categoryId", c.getCategoryId());
+            row.put("startTime", c.getStartTime());
+            row.put("endTime", c.getEndTime());
+            row.put("totalCount", total);
+            row.put("issuedCount", issued);
+            row.put("remainCount", total > 0 ? Math.max(0, total - issued) : -1);
+            row.put("perLimit", perLimit);
+            row.put("claimedCount", claimed);
+            row.put("canClaim", canClaim);
+            rows.add(row);
+        }
+        return Result.success(rows);
+    }
 
     /** B端：分页查询优惠券列表 */
     public Result<?> adminGetCoupons(Integer pageNum, Integer pageSize, String status) {
@@ -80,11 +123,14 @@ public class CouponService extends ServiceImpl<CouponMapper, Coupon> {
                 && coupon.getIssuedCount() >= coupon.getTotalCount())
             throw new BusinessException("优惠券已领完");
 
-        // 检查是否已领过
+        // 限领次数校验（per_limit，-1=不限）
         LambdaQueryWrapper<UserCoupon> check = new LambdaQueryWrapper<>();
         check.eq(UserCoupon::getUserId, userId).eq(UserCoupon::getCouponId, couponId);
-        if (userCouponMapper.selectCount(check) > 0)
-            throw new BusinessException("您已领取过该优惠券");
+        long claimed = userCouponMapper.selectCount(check);
+        int perLimit = coupon.getPerLimit() == null ? 1 : coupon.getPerLimit();
+        if (perLimit >= 0 && claimed >= perLimit) {
+            throw new BusinessException("已达到该券限领次数");
+        }
 
         UserCoupon uc = new UserCoupon();
         uc.setUserId(userId);
@@ -142,5 +188,73 @@ public class CouponService extends ServiceImpl<CouponMapper, Coupon> {
             available.add(uc);
         }
         return Result.success(available);
+    }
+
+    // ==================== B端：批量发券 ====================
+
+    /**
+     * 批量发券：对每个 userId 插入一条 user_coupon（若已存在则跳过）。
+     * 仅操作优惠券发放记录（user_coupons）和 coupons.issued_count，不触碰订单/库存履约流转。
+     */
+    @Transactional
+    public Result<?> batchIssueCoupons(Integer couponId, List<Integer> userIds) {
+        if (couponId == null) throw new BusinessException("couponId不能为空");
+        if (userIds == null || userIds.isEmpty()) throw new BusinessException("userIds不能为空");
+
+        Coupon coupon = this.getById(couponId);
+        if (coupon == null) throw new BusinessException(404, "优惠券不存在");
+        if (!"active".equals(coupon.getStatus())) throw new BusinessException("优惠券已下架");
+
+        Date now = new Date();
+        if (coupon.getStartTime() != null && now.before(coupon.getStartTime())) {
+            throw new BusinessException("优惠券尚未开始");
+        }
+        if (coupon.getEndTime() != null && coupon.getEndTime().before(now)) {
+            throw new BusinessException("优惠券已过期");
+        }
+
+        Integer totalCount = coupon.getTotalCount();
+        int totalLimit = (totalCount != null ? totalCount : -1);
+
+        int issuedCount = coupon.getIssuedCount() != null ? coupon.getIssuedCount() : 0;
+
+        int inserted = 0;
+        int skipped = 0;
+
+        for (Integer userId : userIds) {
+            if (userId == null) continue;
+
+            LambdaQueryWrapper<UserCoupon> check = new LambdaQueryWrapper<>();
+            check.eq(UserCoupon::getUserId, userId).eq(UserCoupon::getCouponId, couponId);
+            if (userCouponMapper.selectCount(check) > 0) {
+                skipped++;
+                continue;
+            }
+
+            // 有总量限制时，发放到上限后停止
+            if (totalLimit > 0 && issuedCount >= totalLimit) {
+                break;
+            }
+
+            UserCoupon uc = new UserCoupon();
+            uc.setUserId(userId);
+            uc.setCouponId(couponId);
+            uc.setStatus("unused");
+            uc.setGetTime(now);
+            userCouponMapper.insert(uc);
+
+            inserted++;
+            issuedCount++;
+        }
+
+        coupon.setIssuedCount(issuedCount);
+        this.updateById(coupon);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("successCount", inserted);
+        data.put("skippedCount", skipped);
+        data.put("requestedCount", userIds.size());
+        data.put("issuedCount", issuedCount);
+        return Result.success(data);
     }
 }

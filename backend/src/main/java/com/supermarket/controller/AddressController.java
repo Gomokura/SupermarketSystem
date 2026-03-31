@@ -21,17 +21,25 @@ public class AddressController {
     }
 
     @PostMapping
-    public Result<?> addAddress(@RequestBody Address address) {
+    public Result<?> addAddress(
+            @RequestAttribute Integer userId,
+            @RequestBody Address address) {
+        address.setUserId(userId);
         return addressService.addAddress(address);
     }
 
     @PutMapping
-    public Result<?> updateAddress(@RequestBody Address address) {
+    public Result<?> updateAddress(
+            @RequestAttribute Integer userId,
+            @RequestBody Address address) {
+        address.setUserId(userId);
         return addressService.updateAddress(address);
     }
 
     @DeleteMapping("/{addressId}")
-    public Result<?> deleteAddress(@PathVariable Integer addressId) {
-        return addressService.deleteAddress(addressId);
+    public Result<?> deleteAddress(
+            @RequestAttribute Integer userId,
+            @PathVariable Integer addressId) {
+        return addressService.deleteAddress(addressId, userId);
     }
 }

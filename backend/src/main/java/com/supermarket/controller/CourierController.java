@@ -14,12 +14,33 @@ public class CourierController {
     @Autowired
     private DeliveryTaskService deliveryTaskService;
 
+    /** P-02 配送员查看个人信息 GET /courier/profile */
+    @GetMapping("/profile")
+    public Result<?> getProfile(@RequestAttribute Integer userId) {
+        return deliveryTaskService.getCourierProfile(userId);
+    }
+
+    /** P-03 配送员修改密码 PUT /courier/password */
+    @PutMapping("/password")
+    public Result<?> changePassword(
+            @RequestAttribute Integer userId,
+            @RequestBody Map<String, String> body) {
+        return deliveryTaskService.changeCourierPassword(
+                userId, body.get("oldPassword"), body.get("newPassword"));
+    }
+
     /** 骑手端：查看我的配送任务 */
     @GetMapping("/tasks")
     public Result<?> getMyCourierTasks(
             @RequestAttribute Integer userId,
             @RequestParam(required = false) String status) {
         return deliveryTaskService.getMyCourierTasks(userId, status);
+    }
+
+    /** P-09 历史任务记录 GET /courier/tasks/history */
+    @GetMapping("/tasks/history")
+    public Result<?> getHistoryTasks(@RequestAttribute Integer userId) {
+        return deliveryTaskService.getHistoryTasks(userId);
     }
 
     /** 骑手端：取件（开始配送） */

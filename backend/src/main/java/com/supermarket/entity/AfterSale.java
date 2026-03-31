@@ -10,23 +10,26 @@ import java.util.Date;
 @Data
 @TableName("AFTER_SALES")
 public class AfterSale {
-    @TableId(value = "after_sale_id", type = IdType.AUTO)
+    @TableId(value = "AS_ID", type = IdType.AUTO)
     private Integer afterSaleId;
+    /** 售后单号 */
+    private String asNo;
     private Integer orderId;
     private Integer userId;
-    @TableField("after_type")
-    private String asType;       // 类型：refund_only / return_refund
+    /** v3: REFUND / EXCHANGE */
+    @TableField("AS_TYPE")
+    private String asType;
     private String reason;
-    private String description;   // 详细描述
-    private String images;       // 图片逗号分隔
-    @TableField("STATUS")
+    /** 凭证图片URL逗号分隔 */
+    private String images;
+    /** 退哪个订单商品（NULL=整单退） */
+    private Integer itemId;
     private String status;
-    private Double refundAmount; // 退款金额
+    private Double refundAmount;
+    /** 管理员备注，数据库字段 ADMIN_REMARK */
     @TableField("ADMIN_REMARK")
-    private String adminRemark;  // 管理员备注
-    private String rejectReason; // 拒绝原因
-    private Integer handlerId;   // 处理人
-    @TableField("handle_time")
+    private String adminRemark;
+    private Integer handlerId;
     private Date handleTime;
     private Date createTime;
 

@@ -6,6 +6,9 @@ import com.supermarket.service.CouponService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/coupons")
 public class CouponController {
@@ -46,7 +49,26 @@ public class CouponController {
         return couponService.deleteCoupon(couponId);
     }
 
+    /**
+     * 批量发券（B端）
+     * POST /coupons/admin/batch-issue
+     * body: { "couponId": 1, "userIds": [1000,1001,...] }
+     */
+    @PostMapping("/admin/batch-issue")
+    public Result<?> batchIssueCoupons(@RequestBody Map<String, Object> body) {
+        Integer couponId = body.get("couponId") != null ? ((Number) body.get("couponId")).intValue() : null;
+        @SuppressWarnings("unchecked")
+        List<Integer> userIds = body.get("userIds") != null ? (List<Integer>) body.get("userIds") : null;
+        return couponService.batchIssueCoupons(couponId, userIds);
+    }
+
     // ==================== C端 ====================
+
+    /** 优惠券中心（可领取） */
+    @GetMapping("/center")
+    public Result<?> couponCenter(@RequestAttribute Integer userId) {
+        return couponService.couponCenter(userId);
+    }
 
     /** 领券 */
     @PostMapping("/claim/{couponId}")

@@ -46,7 +46,8 @@ public class SeckillService extends ServiceImpl<SeckillActivityModelMapper, Seck
         this.page(page, wrapper);
 
         Date now = new Date();
-        List<SeckillActivityModel> records = page.getRecords();
+        // page.getRecords() 在部分场景下可能是不可变列表，removeIf 会抛 UnsupportedOperationException（getMessage 常为 null）
+        List<SeckillActivityModel> records = new ArrayList<>(page.getRecords());
         records.forEach(a -> a.setProducts(null));
 
         // 过滤到前端需要的 state（如果 state 为空则不过滤）
@@ -56,11 +57,11 @@ public class SeckillService extends ServiceImpl<SeckillActivityModelMapper, Seck
                 a.setCurrentState(computed);
                 return !state.equalsIgnoreCase(computed);
             });
-            page.setRecords(records);
         }
+        page.setRecords(records);
 
         // 填充展示态
-        for (SeckillActivityModel a : page.getRecords()) {
+        for (SeckillActivityModel a : records) {
             a.setCurrentState(computeState(a, now));
         }
 
@@ -96,7 +97,7 @@ public class SeckillService extends ServiceImpl<SeckillActivityModelMapper, Seck
     public Result<?> getActivityProducts(Integer seckillId) {
         LambdaQueryWrapper<SeckillActivityProductModel> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SeckillActivityProductModel::getSeckillId, seckillId);
-        List<SeckillActivityProductModel> rows = seckillProductMapper.selectList(wrapper);
+        List<SeckillActivityProductModel> rows = new ArrayList<>(seckillProductMapper.selectList(wrapper));
 
         // 兼容：如果数据库没有 ACTIVITY_PRODUCTS 数据，则尝试读取 SECKILL_PRODUCTS
         if (rows == null || rows.isEmpty()) {

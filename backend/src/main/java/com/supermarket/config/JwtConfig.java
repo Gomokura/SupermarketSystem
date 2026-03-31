@@ -5,7 +5,6 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -31,9 +30,7 @@ public class JwtConfig {
         claims.put("userId", userId);
         claims.put("username", username);
         claims.put("role", role);
-        // JJWT 对 subject 等字段在部分版本下不接受 null，避免 NPE
-        String subject = StringUtils.hasText(username) ? username : String.valueOf(userId);
-        return createToken(claims, subject);
+        return createToken(claims, username);
     }
 
     private String createToken(Map<String, Object> claims, String subject) {

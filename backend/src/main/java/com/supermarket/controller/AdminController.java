@@ -1,5 +1,6 @@
 package com.supermarket.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.supermarket.common.Result;
 import com.supermarket.entity.*;
 import com.supermarket.service.AdminService;
@@ -15,6 +16,43 @@ public class AdminController {
 
     @Autowired
     private AdminService adminService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    // ==================== 管理员管理 ====================
+
+    @GetMapping("/admins")
+    public Result<?> getAdmins(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword) {
+        return adminService.getAdminList(pageNum, pageSize, keyword);
+    }
+
+    @PostMapping("/admins")
+    public Result<?> createAdmin(
+            @RequestAttribute Integer adminId,
+            @RequestBody Admin admin) {
+        // 权限细分（SUPER_ADMIN 才能创建）在拦截器未做按钮级，这里先按最小可用实现
+        return adminService.createAdmin(admin);
+    }
+
+    @PutMapping("/admins/{targetAdminId}")
+    public Result<?> updateAdmin(
+            @RequestAttribute Integer adminId,
+            @PathVariable Integer targetAdminId,
+            @RequestBody Admin patch) {
+        return adminService.updateAdmin(targetAdminId, patch);
+    }
+
+    @PutMapping("/admins/{targetAdminId}/reset-password")
+    public Result<?> resetPassword(
+            @RequestAttribute Integer adminId,
+            @PathVariable Integer targetAdminId,
+            @RequestParam String newPassword) {
+        return adminService.resetAdminPassword(targetAdminId, newPassword);
+    }
 
     // ==================== 用户管理 ====================
 
@@ -43,6 +81,17 @@ public class AdminController {
     @GetMapping("/statistics")
     public Result<?> getStatistics() {
         return adminService.getStatistics();
+    }
+
+    /**
+     * 完整统计看板（B 端）
+     * GET /admin/dashboard?days=30&topN=10
+     */
+    @GetMapping("/dashboard")
+    public Result<?> getDashboard(
+            @RequestParam(defaultValue = "30") Integer days,
+            @RequestParam(defaultValue = "10") Integer topN) {
+        return adminService.getDashboard(days, topN);
     }
 
     // ==================== 库存管理 ====================
@@ -166,11 +215,10 @@ public class AdminController {
             @RequestAttribute Integer userId) {
         // body: { "order": {...}, "items": [...] }
         // 直接用 Jackson 转换
-        com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
-        PurchaseOrder order = om.convertValue(body.get("order"), PurchaseOrder.class);
+        PurchaseOrder order = objectMapper.convertValue(body.get("order"), PurchaseOrder.class);
         order.setOperatorId(userId);
-        List<PurchaseOrderItem> items = om.convertValue(body.get("items"),
-            om.getTypeFactory().constructCollectionType(List.class, PurchaseOrderItem.class));
+        List<PurchaseOrderItem> items = objectMapper.convertValue(body.get("items"),
+            objectMapper.getTypeFactory().constructCollectionType(List.class, PurchaseOrderItem.class));
         return adminService.createPurchaseOrder(order, items);
     }
 
@@ -218,5 +266,19 @@ public class AdminController {
             @PathVariable Integer courierId,
             @RequestParam Integer isDisabled) {
         return adminService.updateCourierStatus(courierId, isDisabled);
+    }
+
+    // ==================== 站内信 ====================
+
+    @PostMapping("/messages")
+    public Result<?> sendMessage(
+            @RequestAttribute Integer adminId,
+            @RequestBody Map<String, Object> body) {
+        Integer userId = body.get("userId") != null ? ((Number) body.get("userId")).intValue() : null;
+        String title = (String) body.get("title");
+        String content = (String) body.get("content");
+        String msgType = (String) body.get("msgType");
+        Integer refId = body.get("refId") != null ? ((Number) body.get("refId")).intValue() : null;
+        return adminService.sendMessageToUser(adminId, userId, title, content, msgType, refId);
     }
 }

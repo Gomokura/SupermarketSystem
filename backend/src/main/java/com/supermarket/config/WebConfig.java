@@ -25,13 +25,14 @@ public class WebConfig implements WebMvcConfigurer {
                         "/products/{productId}",
                         "/products/barcode/**",
                         "/products/recommended",
+                        // C 端：秒杀活动查询（不要求登录）
+                        "/seckill/activities",
+                        "/seckill/activities/**",
                         "/products/categories/tree",
                         "/products/categories/list",
                         "/categories/list",
                         "/banners/list",
                         "/reviews/product/**",
-                        "/courier/tasks",
-                        "/courier/status",
                         "/static/**",
                         "/error"
                 );

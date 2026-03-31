@@ -1,4 +1,4 @@
-﻿package com.supermarket.controller;
+package com.supermarket.controller;
 
 import com.supermarket.common.Result;
 import com.supermarket.dto.CreateOrderRequest;
@@ -16,10 +16,160 @@ public class OrderController {
     @Autowired
     private OrderService orderService;
 
-    // ==================== C绔?=============    }
+    // ==================== C端 ====================
 
     /**
-     * 绠＄悊鍛樺彇娑堣鍗?
+     * 用户订单列表
+     * GET /orders/list?status=&pageNum=&pageSize=
+     */
+    @GetMapping("/list")
+    public Result<?> getUserOrders(
+            @RequestAttribute Integer userId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        return orderService.getUserOrders(userId, status, pageNum, pageSize);
+    }
+
+    /**
+     * 订单详情
+     * GET /orders/{orderId}
+     */
+    @GetMapping("/{orderId}")
+    public Result<?> getOrderDetail(
+            @PathVariable Integer orderId,
+            @RequestAttribute Integer userId) {
+        return orderService.getOrderDetail(orderId, userId);
+    }
+
+    /**
+     * 提交订单
+     * POST /orders/create
+     * body: { addressId, paymentMethod, couponId, pointsUsed, remark, items: [{productId, quantity, skuId, specName}] }
+     */
+    @PostMapping("/create")
+    public Result<?> createOrder(
+            @RequestAttribute Integer userId,
+            @RequestBody CreateOrderRequest request) {
+        return orderService.createOrder(
+                userId,
+                request.getAddressId(),
+                request.getPaymentMethod(),
+                request.getItems(),
+                request.getCouponId(),
+                request.getPointsUsed(),
+                request.getRemark(),
+                request.getDeliveryTimeSlot()
+        );
+    }
+
+    /** 结算预览（不创建订单） */
+    @PostMapping("/preview")
+    public Result<?> previewOrder(
+            @RequestAttribute Integer userId,
+            @RequestBody CreateOrderRequest request) {
+        return orderService.previewOrder(
+                userId,
+                request.getAddressId(),
+                request.getItems(),
+                request.getCouponId(),
+                request.getPointsUsed()
+        );
+    }
+
+    /**
+     * 支付订单
+     * POST /orders/{orderId}/pay
+     * body: { "payMethod": "wechat" }
+     */
+    @PostMapping("/{orderId}/pay")
+    public Result<?> payOrder(
+            @PathVariable Integer orderId,
+            @RequestAttribute Integer userId,
+            @RequestBody Map<String, String> body) {
+        return orderService.payOrder(orderId, userId, body.get("payMethod"));
+    }
+
+    /**
+     * 取消订单
+     * PUT /orders/{orderId}/cancel
+     */
+    @PutMapping("/{orderId}/cancel")
+    public Result<?> cancelOrder(
+            @PathVariable Integer orderId,
+            @RequestAttribute Integer userId) {
+        return orderService.cancelOrder(orderId, userId);
+    }
+
+    /**
+     * 确认收货
+     * PUT /orders/{orderId}/confirm
+     */
+    @PutMapping("/{orderId}/confirm")
+    public Result<?> confirmReceipt(
+            @PathVariable Integer orderId,
+            @RequestAttribute Integer userId) {
+        return orderService.confirmReceipt(orderId, userId);
+    }
+
+    /** 订单时间线 */
+    @GetMapping("/{orderId}/timeline")
+    public Result<?> getOrderTimeline(
+            @PathVariable Integer orderId,
+            @RequestAttribute Integer userId) {
+        return orderService.getOrderStatusLogs(orderId, userId, false);
+    }
+
+    // ==================== B端管理 ====================
+
+    /**
+     * 管理后台订单列表
+     * GET /orders/admin/list?status=&orderNo=&userId=&pageNum=&pageSize=
+     */
+    @GetMapping("/admin/list")
+    public Result<?> adminGetOrderList(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String orderNo,
+            @RequestParam(required = false) Integer userId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "20") Integer pageSize) {
+        return orderService.adminGetOrderList(status, orderNo, userId, startDate, endDate, pageNum, pageSize);
+    }
+
+    /** 管理后台查看订单时间线 */
+    @GetMapping("/admin/{orderId}/timeline")
+    public Result<?> adminGetOrderTimeline(
+            @PathVariable Integer orderId,
+            @RequestAttribute Integer adminId) {
+        return orderService.getOrderStatusLogs(orderId, adminId, true);
+    }
+
+    /**
+     * 管理员发货（带快递信息）
+     * PUT /orders/{orderId}/ship
+     * body: { "company": "顺丰", "trackingNo": "SF123" }
+     */
+    @PutMapping("/{orderId}/ship")
+    public Result<?> shipOrder(
+            @PathVariable Integer orderId,
+            @RequestAttribute Integer adminId,
+            @RequestBody Map<String, String> body) {
+        return orderService.shipOrder(orderId, adminId, body.get("company"), body.get("trackingNo"));
+    }
+
+    /** 管理员按订单分配配送员 */
+    @PutMapping("/{orderId}/assign-courier")
+    public Result<?> assignCourier(
+            @PathVariable Integer orderId,
+            @RequestParam Integer courierId,
+            @RequestAttribute Integer adminId) {
+        return orderService.assignCourier(orderId, courierId, adminId);
+    }
+
+    /**
+     * 管理员取消订单
      * PUT /orders/{orderId}/admin-cancel
      * body: { "reason": "..." }
      */
@@ -32,10 +182,16 @@ public class OrderController {
         return orderService.adminCancelOrder(orderId, userId, reason);
     }
 
-    // ==================== 鏀堕摱鍙扮 ====================
-
+    // ==================== 收银台端 ====================
+    /** C-46 再次购买：将历史订单商品加入购物车 */
+    @PostMapping("/{orderId}/reorder")
+    public Result<?> reorder(
+            @PathVariable Integer orderId,
+            @RequestAttribute Integer userId) {
+        return orderService.reorder(orderId, userId);
+    }
     /**
-     * 鏀堕摱鍙板揩閫熶笅鍗曪紙鎵爜/鎵嬪姩褰曞叆锛?
+     * 收银台快速下单（扫码/手动录入）
      * POST /orders/cashier
      * body: { payMethod, receivedAmount, items: [{productId, quantity}] }
      */
@@ -48,54 +204,16 @@ public class OrderController {
                 ? ((Number) body.get("receivedAmount")).doubleValue() : null;
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rawItems = (List<Map<String, Object>>) body.get("items");
+        if (rawItems == null || rawItems.isEmpty()) return Result.error("items不能为空");
 
         List<CreateOrderRequest.CartItem> items = new java.util.ArrayList<>();
         for (Map<String, Object> raw : rawItems) {
             CreateOrderRequest.CartItem item = new CreateOrderRequest.CartItem();
             item.setProductId((Integer) raw.get("productId"));
             item.setQuantity((Integer) raw.get("quantity"));
-            if (raw.get("skuId") != null) item.setSkuId((Integer) raw.get("skuId"));
             items.add(item);
         }
 
         return orderService.cashierCreateOrder(userId, items, payMethod, receivedAmount);
-    }
-
-    // ==================== 閰嶉€佷笌杞ㄨ抗 ====================
-
-    /**
-     * 璁㈠崟閰嶉€佽建杩?
-     * GET /orders/{orderId}/delivery-trace
-     */
-    @GetMapping("/{orderId}/delivery-trace")
-    public Result<?> getDeliveryTrace(
-            @PathVariable Integer orderId,
-            @RequestAttribute(required = false) Integer userId) {
-        return orderService.getDeliveryTrace(orderId, userId);
-    }
-
-    /**
-     * 璁㈠崟鏃堕棿绾匡紙璁㈠崟鍏ㄧ敓鍛藉懆鏈熻妭鐐癸級
-     * GET /orders/{orderId}/timeline
-     */
-    @GetMapping("/{orderId}/timeline")
-    public Result<?> getOrderTimeline(
-            @PathVariable Integer orderId,
-            @RequestAttribute(required = false) Integer userId) {
-        return orderService.getOrderTimeline(orderId, userId);
-    }
-
-    /**
-     * 绠＄悊鍛樻寚娲鹃厤閫佸憳
-     * PUT /orders/{orderId}/assign-courier
-     * body: { courierId }
-     */
-    @PutMapping("/{orderId}/assign-courier")
-    public Result<?> assignCourier(
-            @PathVariable Integer orderId,
-            @RequestBody Map<String, Object> body,
-            @RequestAttribute Integer userId) {
-        Integer courierId = (Integer) body.get("courierId");
-        return orderService.assignCourier(orderId, courierId, userId);
     }
 }
