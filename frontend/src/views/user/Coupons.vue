@@ -1,87 +1,65 @@
 <template>
   <div class="page-container">
-    <div class="page-header">
-      <h2>优惠券中心</h2>
-    </div>
-
+    <h2>优惠券中心</h2>
     <el-tabs v-model="activeTab" class="coupon-tabs">
-      <!-- 领券中心 -->
-      <el-tab-pane label="领券中心" name="claim">
-        <div v-loading="claimLoading">
-          <el-row :gutter="20" v-if="claimList.length > 0">
-            <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="coupon in claimList" :key="coupon.couponId">
-              <div class="coupon-card" :class="{ 'coupon-disabled': coupon.remainingCount <= 0 }">
-                <div class="coupon-left">
-                  <div class="coupon-value">
-                    <span class="coupon-symbol">¥</span>
-                    <span class="coupon-amount">{{ coupon.type === 'cash' ? coupon.value : coupon.value }}</span>
-                    <span class="coupon-unit">{{ coupon.type === 'discount' ? '折' : '元' }}</span>
-                  </div>
-                  <div class="coupon-threshold">
-                    满{{ coupon.minAmount }}元可用
-                  </div>
-                </div>
-                <div class="coupon-right">
-                  <div class="coupon-name">{{ coupon.name }}</div>
-                  <div class="coupon-desc">{{ coupon.description || '全场通用' }}</div>
-                  <div class="coupon-date">有效期至 {{ formatDate(coupon.endTime) }}</div>
-                  <div class="coupon-count">
-                    剩余 {{ coupon.remainingCount }} 张
-                    <el-tag v-if="coupon.remainingCount <= 0" type="danger" size="small">已领完</el-tag>
-                  </div>
-                  <el-button
-                    type="danger"
-                    size="small"
-                    class="coupon-btn"
-                    :disabled="coupon.remainingCount <= 0"
-                    @click="claimCoupon(coupon)"
-                  >
-                    立即领取
-                  </el-button>
+      <el-tab-pane label="领券中心" name="available">
+        <div class="coupon-grid">
+          <el-card v-for="coupon in availableCoupons" :key="coupon.couponId" class="coupon-card">
+            <div class="coupon-content">
+              <div class="coupon-left">
+                <div class="coupon-value">
+                  <span v-if="coupon.couponType === 1" class="amount">¥{{ coupon.value }}</span>
+                  <span v-else class="amount">{{ coupon.value }}折</span>
+                  <span class="threshold">满{{ coupon.minAmount }}可用</span>
                 </div>
               </div>
-            </el-col>
-          </el-row>
-          <el-empty v-else description="暂无优惠券可领取" />
+              <div class="coupon-right">
+                <div class="coupon-name">{{ coupon.name }}</div>
+                <div class="coupon-desc">{{ coupon.description || '全场通用优惠券' }}</div>
+                <div class="coupon-info">
+                  <span>剩余 {{ coupon.remainCount || 0 }} 张</span>
+                  <span>有效期至 {{ formatDate(coupon.expireTime) }}</span>
+                </div>
+                <el-button type="danger" size="small" @click="claimCoupon(coupon.couponId)" :disabled="coupon.remainCount === 0">
+                  立即领取
+                </el-button>
+              </div>
+            </div>
+          </el-card>
+          <el-empty v-if="availableCoupons.length === 0" description="暂无优惠券可领"></el-empty>
         </div>
       </el-tab-pane>
 
-      <!-- 我的优惠券 -->
-      <el-tab-pane label="我的优惠券" name="mine">
+      <el-tab-pane label="我的优惠券" name="my">
         <el-tabs v-model="myCouponStatus" @tab-change="loadMyCoupons">
-          <el-tab-pane label="未使用" name="available" />
-          <el-tab-pane label="已使用" name="used" />
-          <el-tab-pane label="已过期" name="expired" />
+          <el-tab-pane label="未使用" name="available"></el-tab-pane>
+          <el-tab-pane label="已使用" name="used"></el-tab-pane>
+          <el-tab-pane label="已过期" name="expired"></el-tab-pane>
         </el-tabs>
-
-        <div v-loading="myLoading">
-          <el-row :gutter="20" v-if="myCouponList.length > 0">
-            <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="coupon in myCouponList" :key="coupon.userCouponId">
-              <div class="coupon-card" :class="getCouponStatusClass(coupon)">
-                <div class="coupon-left">
-                  <div class="coupon-value">
-                    <span class="coupon-symbol">¥</span>
-                    <span class="coupon-amount">{{ coupon.value }}</span>
-                    <span class="coupon-unit">{{ coupon.type === 'discount' ? '折' : '元' }}</span>
-                  </div>
-                  <div class="coupon-threshold">
-                    满{{ coupon.minAmount }}元可用
-                  </div>
-                </div>
-                <div class="coupon-right">
-                  <div class="coupon-name">{{ coupon.name }}</div>
-                  <div class="coupon-desc">{{ coupon.description || '全场通用' }}</div>
-                  <div class="coupon-date">有效期至 {{ formatDate(coupon.endTime) }}</div>
-                  <div class="coupon-status">
-                    <el-tag :type="getCouponTagType(coupon)" size="small">
-                      {{ getCouponStatusText(coupon) }}
-                    </el-tag>
-                  </div>
+        <div class="coupon-grid">
+          <el-card v-for="coupon in myCoupons" :key="coupon.userCouponId" class="coupon-card my-coupon">
+            <div class="coupon-content">
+              <div class="coupon-left">
+                <div class="coupon-value">
+                  <span v-if="coupon.couponType === 1" class="amount">¥{{ coupon.value }}</span>
+                  <span v-else class="amount">{{ coupon.value }}折</span>
+                  <span class="threshold">满{{ coupon.minAmount }}可用</span>
                 </div>
               </div>
-            </el-col>
-          </el-row>
-          <el-empty v-else :description="`暂无${getStatusLabel()}的优惠券`" />
+              <div class="coupon-right">
+                <div class="coupon-name">{{ coupon.name }}</div>
+                <div class="coupon-status">
+                  <el-tag v-if="coupon.status === 'AVAILABLE'" type="success" size="small">未使用</el-tag>
+                  <el-tag v-else-if="coupon.status === 'USED'" type="info" size="small">已使用</el-tag>
+                  <el-tag v-else type="danger" size="small">已过期</el-tag>
+                </div>
+                <div class="coupon-info">
+                  <span>有效期至 {{ formatDate(coupon.expireTime) }}</span>
+                </div>
+              </div>
+            </div>
+          </el-card>
+          <el-empty v-if="myCoupons.length === 0" :description="'暂无' + statusText + '优惠券'"></el-empty>
         </div>
       </el-tab-pane>
     </el-tabs>
@@ -89,195 +67,146 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { couponAPI } from '@/api'
 
-const activeTab = ref('claim')
+const activeTab = ref('available')
 const myCouponStatus = ref('available')
+const availableCoupons = ref([])
+const myCoupons = ref([])
 
-const claimList = ref([])
-const myCouponList = ref([])
-const claimLoading = ref(false)
-const myLoading = ref(false)
-
-onMounted(() => {
-  loadClaimList()
-  loadMyCoupons()
+const statusText = computed(() => {
+  const map = { available: '未使用', used: '已使用', expired: '已过期' }
+  return map[myCouponStatus.value] || ''
 })
 
-const loadClaimList = async () => {
-  claimLoading.value = true
+const formatDate = (date) => {
+  if (!date) return '-'
+  return new Date(date).toLocaleDateString('zh-CN')
+}
+
+const loadAvailableCoupons = async () => {
   try {
     const res = await couponAPI.getAvailable()
-    claimList.value = res.data || []
+    availableCoupons.value = res.data || []
   } catch (error) {
     console.error(error)
-  } finally {
-    claimLoading.value = false
   }
 }
 
 const loadMyCoupons = async () => {
-  myLoading.value = true
   try {
     const res = await couponAPI.getMyCoupons(myCouponStatus.value)
-    myCouponList.value = res.data || []
+    myCoupons.value = res.data || []
   } catch (error) {
     console.error(error)
-  } finally {
-    myLoading.value = false
   }
 }
 
-const claimCoupon = async (coupon) => {
+const claimCoupon = async (couponId) => {
   try {
-    await couponAPI.claim(coupon.couponId)
-    ElMessage.success(`成功领取「${coupon.name}」`)
-    loadClaimList()
-    loadMyCoupons()
+    await couponAPI.claim(couponId)
+    ElMessage.success('领取成功')
+    loadAvailableCoupons()
   } catch (error) {
     console.error(error)
   }
 }
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return dateStr.split(' ')[0]
-}
-
-const getStatusLabel = () => {
-  const map = { available: '未使用', used: '已使用', expired: '已过期' }
-  return map[myCouponStatus.value] || ''
-}
-
-const getCouponStatusClass = (coupon) => {
-  if (myCouponStatus.value === 'used') return 'coupon-used'
-  if (myCouponStatus.value === 'expired') return 'coupon-expired'
-  return ''
-}
-
-const getCouponTagType = (coupon) => {
-  if (myCouponStatus.value === 'used') return 'info'
-  if (myCouponStatus.value === 'expired') return 'warning'
-  if (coupon.status === 'used') return 'info'
-  if (coupon.status === 'expired') return 'warning'
-  return 'success'
-}
-
-const getCouponStatusText = (coupon) => {
-  if (myCouponStatus.value === 'used') return '已使用'
-  if (myCouponStatus.value === 'expired') return '已过期'
-  if (coupon.status === 'used') return '已使用'
-  if (coupon.status === 'expired') return '已过期'
-  return '未使用'
-}
+onMounted(() => {
+  loadAvailableCoupons()
+  loadMyCoupons()
+})
 </script>
 
 <style scoped>
 .page-container {
   padding: 20px;
 }
-.page-header {
-  margin-bottom: 20px;
-}
-.page-header h2 {
-  margin: 0;
-}
+
 .coupon-tabs {
-  background: #fff;
-  padding: 20px;
-  border-radius: 8px;
+  margin-top: 20px;
 }
+
+.coupon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
 .coupon-card {
+  margin-bottom: 0;
+}
+
+.coupon-card :deep(.el-card__body) {
+  padding: 0;
+}
+
+.coupon-content {
   display: flex;
-  border: 1px solid #ed6a0c;
-  border-radius: 8px;
   overflow: hidden;
-  margin-bottom: 16px;
-  height: 140px;
-  background: #fff;
 }
-.coupon-card.coupon-disabled {
-  border-color: #dcdfe6;
-  opacity: 0.6;
-}
-.coupon-card.coupon-used {
-  border-color: #dcdfe6;
-}
-.coupon-card.coupon-expired {
-  border-color: #dcdfe6;
-  opacity: 0.6;
-}
+
 .coupon-left {
   width: 100px;
-  background: linear-gradient(135deg, #ed6a0c, #ff8c3a);
+  background: linear-gradient(135deg, #ff4d4f, #ff7875);
+  color: white;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  padding: 10px;
+  padding: 20px 12px;
   flex-shrink: 0;
 }
-.coupon-disabled .coupon-left {
-  background: linear-gradient(135deg, #909399, #b1b3b8);
-}
-.coupon-used .coupon-left,
-.coupon-expired .coupon-left {
-  background: linear-gradient(135deg, #909399, #b1b3b8);
-}
+
 .coupon-value {
-  font-size: 22px;
+  text-align: center;
+}
+
+.coupon-value .amount {
+  font-size: 24px;
   font-weight: bold;
-  line-height: 1;
+  display: block;
 }
-.coupon-symbol {
-  font-size: 14px;
-}
-.coupon-unit {
+
+.coupon-value .threshold {
   font-size: 12px;
-}
-.coupon-threshold {
-  font-size: 11px;
-  margin-top: 6px;
   opacity: 0.9;
 }
+
 .coupon-right {
   flex: 1;
-  padding: 12px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 8px;
 }
+
 .coupon-name {
-  font-weight: bold;
   font-size: 14px;
-  color: #303133;
+  font-weight: 500;
+  color: #333;
 }
+
 .coupon-desc {
   font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
+  color: #999;
 }
-.coupon-date {
-  font-size: 11px;
-  color: #c0c4cc;
-  margin-top: 4px;
-}
-.coupon-count {
+
+.coupon-info {
   font-size: 12px;
-  color: #606266;
-  margin-top: 4px;
+  color: #666;
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
 }
-.coupon-btn {
-  margin-top: 6px;
-  width: 100%;
-}
+
 .coupon-status {
-  margin-top: 6px;
+  margin-top: 4px;
+}
+
+.my-coupon .coupon-left {
+  background: linear-gradient(135deg, #909399, #b1b3b8);
 }
 </style>
