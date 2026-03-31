@@ -3,9 +3,9 @@
     <h2>我的订单</h2>
     <el-table :data="orders" border style="width: 100%">
       <el-table-column prop="orderId" label="订单号" width="100" />
-      <el-table-column prop="orderTime" label="下单时间" width="180">
+      <el-table-column prop="createTime" label="下单时间" width="180">
         <template #default="{ row }">
-          {{ formatDate(row.orderTime) }}
+          {{ formatDate(row.createTime) }}
         </template>
       </el-table-column>
       <el-table-column prop="totalAmount" label="订单金额" width="120">
@@ -13,12 +13,12 @@
           <span class="amount">￥{{ row.totalAmount }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="orderStatus" label="订单状态" width="120">
+      <el-table-column prop="status" label="订单状态" width="120">
         <template #default="{ row }">
-          <el-tag :type="getStatusType(row.orderStatus)">{{ row.orderStatus }}</el-tag>
+          <el-tag :type="getStatusType(row.status)">{{ row.status }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="paymentMethod" label="支付方式" width="120" />
+      <el-table-column prop="payMethod" label="支付方式" width="120" />
       <el-table-column label="操作">
         <template #default="{ row }">
           <el-button type="primary" size="small" @click="viewDetail(row.orderId)">查看详情</el-button>
@@ -72,17 +72,17 @@ const formatDate = (date) => {
 
 const getStatusType = (status) => {
   const map = {
-    '待支付': 'warning',
-    '待发货': 'info',
-    '配送中': 'primary',
-    '已完成': 'success',
-    '已取消': 'danger'
+    'PENDING_PAY': 'warning',
+    'PAID': 'info',
+    'SHIPPING': 'primary',
+    'COMPLETED': 'success',
+    'CANCELLED': 'danger'
   }
   return map[status] || ''
 }
 
 const canCancel = (status) => {
-  return ['待支付', '待发货'].includes(status)
+  return ['PENDING_PAY', 'PAID'].includes(status)
 }
 
 const viewDetail = (orderId) => {

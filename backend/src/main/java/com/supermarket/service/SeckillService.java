@@ -58,12 +58,12 @@ public class SeckillService extends ServiceImpl<SeckillActivityModelMapper, Seck
                 return !state.equalsIgnoreCase(computed);
             });
         }
-        page.setRecords(records);
-
-        // 填充展示态
+        }
+        // 无论是否过滤，都需要写回 records（并填充展示态）
         for (SeckillActivityModel a : records) {
             a.setCurrentState(computeState(a, now));
         }
+        page.setRecords(records);
 
         // 兼容：如果数据库没有 ACTIVITIES(SECKILL) 数据，则尝试读取 SECKILL_ACTIVITIES
         if (page.getRecords() == null || page.getRecords().isEmpty()) {

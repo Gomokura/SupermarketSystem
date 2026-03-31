@@ -15,7 +15,7 @@
       </el-table-column>
       <el-table-column label="小计" width="120">
         <template #default="{ row }">
-          <span class="subtotal">￥{{ (row.price * row.quantity).toFixed(2) }}</span>
+          <span class="subtotal">￥{{ row.price != null ? (row.price * row.quantity).toFixed(2) : '价格异常' }}</span>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="120">
