@@ -163,9 +163,11 @@ export const messageAPI = {
 export const cashierAPI = {
   openShift: (startCash) => adminRequest.post('/cashier/shift/open', { startCash }),
   getCurrentShift: () => adminRequest.get('/cashier/shift/current'),
-  closeShift: (endCash) => adminRequest.post('/cashier/shift/close', { endCash }),
+  closeShift: (data) => adminRequest.post('/cashier/shift/close', data),
   getHistory: (params) => adminRequest.get('/cashier/shift/history', { params }),
-  searchProduct: (keyword) => adminRequest.get('/cashier/products/search', { params: { keyword } })
+  searchProduct: (keyword) => adminRequest.get('/products/list', { params: { keyword } }),
+  getByBarcode: (barcode) => adminRequest.get(`/products/barcode/${barcode}`),
+  getMemberByPhone: (phone) => adminRequest.get('/auth/cashier/member', { params: { phone } })
 }
 
 export const courierAPI = {
