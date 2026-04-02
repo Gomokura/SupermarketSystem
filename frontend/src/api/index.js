@@ -116,7 +116,8 @@ export const seckillAPI = {
   adminGetList: (params) => adminRequest.get('/seckill/admin/activities', { params }),
   adminCreate: (data) => adminRequest.post('/seckill/admin/activities', data),
   adminUpdate: (id, data) => adminRequest.put(`/seckill/admin/activities/${id}`, data),
-  adminUpsertProducts: (seckillId, items) => adminRequest.post(`/seckill/admin/activities/${seckillId}/products`, items)
+  adminUpsertProducts: (seckillId, items) => adminRequest.post(`/seckill/admin/activities/${seckillId}/products`, items),
+  adminGetActivityProducts: (seckillId) => adminRequest.get(`/seckill/admin/activities/${seckillId}/products`)
 }
 
 export const couponAPI = {
