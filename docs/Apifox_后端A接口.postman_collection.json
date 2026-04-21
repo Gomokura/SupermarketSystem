@@ -1,0 +1,762 @@
+{
+  "info": {
+    "name": "超市管理系统-后端A接口",
+    "description": "后端A：交易履约与库存域\n包含：订单增强、收银、仓储、盘点、售后模块\nBase: http://localhost:8080\n认证方式：登录后获取 Bearer Token，Header 传 Authorization: Bearer <token>",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string",
+      "description": "登录后填入此变量"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "登录后自动提取"
+    }
+  ],
+  "item": [
+
+    {
+      "name": "0 - 认证与登录",
+      "item": [
+        {
+          "name": "管理员登录（获取token）",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/admin/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "admin", "login"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"username\": \"admin\",\n  \"password\": \"123456\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "配送员登录（获取token）",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/courier/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "courier", "login"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"username\": \"\",\n  \"password\": \"\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "C端用户登录（获取token）",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"username\": \"\",\n  \"password\": \"\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "获取管理员自身信息",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/auth/admin/info",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "admin", "info"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "1 - 收银模块",
+      "item": [
+        {
+          "name": "开班（开启收银班次）",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/cashier/shift/open",
+              "host": ["{{baseUrl}}"],
+              "path": ["cashier", "shift", "open"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"startCash\": 500\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "交班（关闭收银班次）",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/cashier/shift/close",
+              "host": ["{{baseUrl}}"],
+              "path": ["cashier", "shift", "close"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"endCash\": 1500\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "当前班次状态查询",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/cashier/shift/current",
+              "host": ["{{baseUrl}}"],
+              "path": ["cashier", "shift", "current"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "班次历史记录",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/cashier/shift/history?pageNum=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["cashier", "shift", "history"],
+              "query": [
+                { "key": "pageNum", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "班次差额报表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/cashier/shift/{shiftId}/report",
+              "host": ["{{baseUrl}}"],
+              "path": ["cashier", "shift", "{shiftId}", "report"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "班次汇总统计",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/cashier/shift/{shiftId}/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["cashier", "shift", "{shiftId}", "summary"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "商品快速搜索（条码/关键字）",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/cashier/products/search?keyword=&barcode=&pageNum=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["cashier", "products", "search"],
+              "query": [
+                { "key": "keyword", "value": "" },
+                { "key": "barcode", "value": "" },
+                { "key": "pageNum", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "2 - 收银台下单",
+      "item": [
+        {
+          "name": "收银台快速下单（扫码/手动录入）",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/orders/cashier",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "cashier"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"payMethod\": \"CASH\",\n  \"receivedAmount\": 100,\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 2\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "3 - 仓储管理",
+      "item": [
+        {
+          "name": "采购单列表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/warehouse/purchase-orders?status=&pageNum=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouse", "purchase-orders"],
+              "query": [
+                { "key": "status", "value": "" },
+                { "key": "pageNum", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "采购单详情",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/warehouse/purchase-orders/{poId}",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouse", "purchase-orders", "{poId}"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "创建采购单",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/warehouse/purchase-orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouse", "purchase-orders"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"supplierId\": 1,\n  \"expectedDate\": \"2026-03-30\",\n  \"remark\": \"急需补货\",\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 100,\n      \"unitPrice\": 10.5\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "审批采购单",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/warehouse/purchase-orders/{poId}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouse", "purchase-orders", "{poId}", "approve"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "取消采购单",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/warehouse/purchase-orders/{poId}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouse", "purchase-orders", "{poId}", "cancel"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "部分到货入库",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/warehouse/purchase-orders/{poId}/receive",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouse", "purchase-orders", "{poId}", "receive"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"items\": [\n    {\n      \"itemId\": 1,\n      \"arrivedQuantity\": 90\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "报损记录列表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/warehouse/damage-records?pageNum=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouse", "damage-records"],
+              "query": [
+                { "key": "pageNum", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "创建报损记录",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/warehouse/damage-records",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouse", "damage-records"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"productId\": 1,\n  \"quantity\": 5,\n  \"reason\": \"商品过期\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "库存流水查询",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/warehouse/inventory-logs?productId=&logType=&pageNum=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouse", "inventory-logs"],
+              "query": [
+                { "key": "productId", "value": "" },
+                { "key": "logType", "value": "" },
+                { "key": "pageNum", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "库存查询",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/warehouse/inventory?pageNum=1&pageSize=20&keyword=",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouse", "inventory"],
+              "query": [
+                { "key": "pageNum", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "keyword", "value": "" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "手动调整库存",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/warehouse/inventory/{productId}/adjust",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouse", "inventory", "{productId}", "adjust"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"newStock\": 200,\n  \"remark\": \"盘点调整\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "低库存预警",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/warehouse/low-stock?pageNum=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouse", "low-stock"],
+              "query": [
+                { "key": "pageNum", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "4 - 盘点管理",
+      "item": [
+        {
+          "name": "创建盘点任务（全库盘点）",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/stocktake",
+              "host": ["{{baseUrl}}"],
+              "path": ["stocktake"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"scope\": \"all\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "创建盘点任务（按分类）",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/stocktake",
+              "host": ["{{baseUrl}}"],
+              "path": ["stocktake"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"scope\": \"category\",\n  \"categoryId\": 1\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "盘点任务列表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/stocktake?status=&pageNum=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["stocktake"],
+              "query": [
+                { "key": "status", "value": "" },
+                { "key": "pageNum", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "盘点任务详情",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/stocktake/{taskId}",
+              "host": ["{{baseUrl}}"],
+              "path": ["stocktake", "{taskId}"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "提交盘点结果",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/stocktake/{taskId}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["stocktake", "{taskId}", "submit"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"items\": [\n    {\n      \"itemId\": 1,\n      \"actualStock\": 98,\n      \"diffReason\": \"盘点少2件\"\n    },\n    {\n      \"itemId\": 2,\n      \"actualStock\": 105,\n      \"diffReason\": \"多3件，找到之前的余货\"\n    }\n  ]\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "5 - 订单增强（轨迹/时间线/指派）",
+      "item": [
+        {
+          "name": "订单时间线",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/{orderId}/timeline",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{orderId}", "timeline"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "订单配送轨迹",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/{orderId}/delivery-trace",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{orderId}", "delivery-trace"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "管理员指派配送员",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/orders/{orderId}/assign-courier",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{orderId}", "assign-courier"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"courierId\": 1\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "6 - 售后与退款",
+      "item": [
+        {
+          "name": "用户提交售后申请",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/after-sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["after-sales"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"orderId\": 1,\n  \"orderItemId\": 1,\n  \"afterType\": \"refund_only\",\n  \"reason\": \"商品有瑕疵\",\n  \"description\": \"包装破损\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "我的售后列表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/after-sales/my",
+              "host": ["{{baseUrl}}"],
+              "path": ["after-sales", "my"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "售后详情",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/after-sales/{afterSaleId}",
+              "host": ["{{baseUrl}}"],
+              "path": ["after-sales", "{afterSaleId}"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "管理后台售后列表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/after-sales/admin/list?status=&pageNum=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["after-sales", "admin", "list"],
+              "query": [
+                { "key": "status", "value": "" },
+                { "key": "pageNum", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "管理员审批售后（通过/拒绝）",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/after-sales/admin/{afterSaleId}/handle",
+              "host": ["{{baseUrl}}"],
+              "path": ["after-sales", "admin", "{afterSaleId}", "handle"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "json",
+              "json": "{\n  \"action\": \"approve\",\n  \"remark\": \"同意退款\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "管理员完成退款（自动回补库存）",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/after-sales/admin/{afterSaleId}/refund",
+              "host": ["{{baseUrl}}"],
+              "path": ["after-sales", "admin", "{afterSaleId}", "refund"]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ]
+          },
+          "response": []
+        }
+      ]
+    }
+
+  ]
+}

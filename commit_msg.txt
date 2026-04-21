@@ -1,0 +1,6 @@
+feat: 数据库密码修复 + Category映射 + 运行文档
+
+- 修复所有账号密码为MD5密文(admin_users/users/delivery_persons各表)
+- 修复Category实体icon字段映射到icon_url列,解决ORA-00904错误
+- 新增docs/运行指南.md完整运行说明文档
+- 更新.gitignore排除node_modules/dist/.vite
