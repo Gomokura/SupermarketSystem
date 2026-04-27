@@ -1,16 +1,25 @@
 <template>
   <div class="page-container">
     <h2>购物车</h2>
-    <el-table :data="cartItems" border style="width: 100%">
-      <el-table-column prop="productName" label="商品名称" />
+    <el-table :data="cartItems" border style="width: 100%" @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="55" :selectable="canSelect" />
+      <el-table-column label="商品名称" min-width="200">
+        <template #default="{ row }">
+          <div :class="{ 'disabled-text': !canSelect(row) }">
+            {{ row.productName }}
+            <el-tag v-if="row.productStatus !== 1" type="info" size="small" class="ml-2">已下架</el-tag>
+            <el-tag v-else-if="row.stock <= 0" type="danger" size="small" class="ml-2">缺货</el-tag>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="price" label="单价" width="120">
         <template #default="{ row }">
-          ￥{{ row.price }}
+          <span :class="{ 'disabled-text': !canSelect(row) }">￥{{ row.price }}</span>
         </template>
       </el-table-column>
       <el-table-column label="数量" width="180">
         <template #default="{ row }">
-          <el-input-number v-model="row.quantity" :min="1" :max="1000" size="small" @change="updateQuantity(row)" />
+          <el-input-number v-model="row.quantity" :min="1" :max="row.stock || 1000" size="small" @change="updateQuantity(row)" :disabled="!canSelect(row)" />
         </template>
       </el-table-column>
       <el-table-column label="小计" width="120">
@@ -32,7 +41,7 @@
       </div>
       <div class="actions">
         <el-button @click="clearCart">清空购物车</el-button>
-        <el-button type="primary" size="large" @click="goCheckout" :disabled="cartItems.length === 0">去结算</el-button>
+        <el-button type="primary" size="large" @click="goCheckout" :disabled="selectedItems.length === 0">去结算</el-button>
       </div>
     </div>
   </div>
@@ -46,9 +55,10 @@ import { cartAPI } from '@/api'
 
 const router = useRouter()
 const cartItems = ref([])
+const selectedItems = ref([])
 
-const totalCount = computed(() => cartItems.value.reduce((sum, item) => sum + item.quantity, 0))
-const totalPrice = computed(() => cartItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
+const totalCount = computed(() => selectedItems.value.reduce((sum, item) => sum + item.quantity, 0))
+const totalPrice = computed(() => selectedItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
 
 onMounted(() => {
   loadCart()
@@ -70,6 +80,15 @@ const updateQuantity = async (item) => {
     console.error(error)
     loadCart()
   }
+}
+
+const canSelect = (row) => {
+  // 根据业务逻辑判断，若有具体状态字段请替换
+  return row.productStatus === 1 && row.stock > 0
+}
+
+const handleSelectionChange = (val) => {
+  selectedItems.value = val
 }
 
 const removeItem = async (cartId) => {
@@ -95,7 +114,12 @@ const clearCart = async () => {
 }
 
 const goCheckout = () => {
-  router.push('/checkout')
+  if (selectedItems.value.length === 0) {
+    ElMessage.warning('请选择商品')
+    return
+  }
+  const ids = selectedItems.value.map(item => item.cartId).join(',')
+  router.push(`/checkout?cartIds=${ids}`)
 }
 </script>
 
@@ -130,5 +154,13 @@ const goCheckout = () => {
 .subtotal {
   color: #f56c6c;
   font-weight: bold;
+}
+
+.disabled-text {
+  color: #c0c4cc;
+}
+
+.ml-2 {
+  margin-left: 8px;
 }
 </style>

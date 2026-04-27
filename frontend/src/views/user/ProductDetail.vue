@@ -6,7 +6,7 @@
         <el-card>
           <el-row :gutter="20">
             <el-col :span="10">
-              <img :src="product.coverImage" class="main-img" />
+              <img :src="product.coverImage" :alt="product.productName || '商品封面'" class="main-img" />
             </el-col>
             <el-col :span="14">
               <h2 class="product-name">{{ product.productName }}</h2>
@@ -47,6 +47,10 @@
                   加入购物车
                 </el-button>
                 <el-button size="large" @click="buyNow" :disabled="currentStock === 0">立即购买</el-button>
+                <el-button size="large" :type="isFavorite ? 'danger' : 'info'" :plain="!isFavorite" @click="toggleFavorite">
+                  <el-icon style="margin-right: 4px"><Star v-if="!isFavorite" /><StarFilled v-else /></el-icon>
+                  {{ isFavorite ? '已收藏' : '收藏' }}
+                </el-button>
               </div>
             </el-col>
           </el-row>
@@ -92,7 +96,7 @@
             class="related-item"
             @click="$router.push(`/products/${p.productId}`)"
           >
-            <img :src="p.coverImage" class="related-img" />
+            <img :src="p.coverImage" :alt="p.productName || '相关商品图片'" class="related-img" />
             <div class="related-info">
               <div class="related-name">{{ p.productName }}</div>
               <div class="related-price">￥{{ p.price }}</div>
@@ -108,7 +112,8 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { productAPI, cartAPI, reviewAPI } from '@/api'
+import { Star, StarFilled } from '@element-plus/icons-vue'
+import { productAPI, cartAPI, reviewAPI, favoriteAPI } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -119,6 +124,7 @@ const reviews = ref([])
 const relatedProducts = ref([])
 const selectedSkuId = ref(null)
 const quantity = ref(1)
+const isFavorite = ref(false)
 
 const selectedSku = computed(() => skus.value.find(s => s.skuId === selectedSkuId.value))
 const currentPrice = computed(() => selectedSku.value?.price ?? product.value.price ?? 0)
@@ -136,14 +142,18 @@ watch(() => route.params.id, () => {
 const loadProduct = async () => {
   const id = route.params.id
   try {
-    const [prodRes, skuRes, reviewRes] = await Promise.all([
+    const [prodRes, skuRes, reviewRes, favRes] = await Promise.all([
       productAPI.getById(id),
       productAPI.getSkus(id),
-      reviewAPI.getByProduct(id, { pageNum: 1, pageSize: 10 })
+      reviewAPI.getByProduct(id, { pageNum: 1, pageSize: 10 }),
+      favoriteAPI.getMyFavorites()
     ])
     product.value = prodRes.data || {}
     skus.value = skuRes.data || []
     reviews.value = reviewRes.data?.records || reviewRes.data || []
+
+    const favList = favRes.data || []
+    isFavorite.value = favList.some(f => (f.productId || f.id) === Number(id))
 
     if (skus.value.length > 0) {
       selectedSkuId.value = skus.value[0].skuId
@@ -160,6 +170,22 @@ const loadProduct = async () => {
     }
   } catch (e) {
     console.error(e)
+  }
+}
+
+const toggleFavorite = async () => {
+  try {
+    if (isFavorite.value) {
+      await favoriteAPI.remove(product.value.productId)
+      ElMessage.success('已取消收藏')
+      isFavorite.value = false
+    } else {
+      await favoriteAPI.add(product.value.productId)
+      ElMessage.success('已收藏')
+      isFavorite.value = true
+    }
+  } catch (error) {
+    console.error(error)
   }
 }
 
