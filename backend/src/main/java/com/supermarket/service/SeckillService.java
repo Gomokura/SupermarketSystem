@@ -58,7 +58,6 @@ public class SeckillService extends ServiceImpl<SeckillActivityModelMapper, Seck
                 return !state.equalsIgnoreCase(computed);
             });
         }
-        }
         // 无论是否过滤，都需要写回 records（并填充展示态）
         for (SeckillActivityModel a : records) {
             a.setCurrentState(computeState(a, now));

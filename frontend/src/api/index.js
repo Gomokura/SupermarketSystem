@@ -142,8 +142,10 @@ export const reviewAPI = {
 export const afterSaleAPI = {
   create: (data) => request.post('/after-sales', data),
   getMy: () => request.get('/after-sales/my'),
+  getDetail: (id) => request.get(`/after-sales/${id}`),
   adminGetList: (params) => adminRequest.get('/after-sales/admin/list', { params }),
-  adminHandle: (id, action, remark) => adminRequest.put(`/after-sales/admin/${id}/handle`, { action, remark })
+  adminHandle: (id, action, remark) => adminRequest.put(`/after-sales/admin/${id}/handle`, { action, remark }),
+  adminRefund: (id) => adminRequest.put(`/after-sales/admin/${id}/refund`)
 }
 
 export const pointsAPI = {
@@ -239,3 +241,29 @@ export const adminAPI = {
   deleteCoupon: (id) => adminRequest.delete(`/coupons/admin/${id}`),
   batchIssueCoupons: (couponId, userIds) => adminRequest.post('/coupons/admin/batch-issue', { couponId, userIds })
 }
+
+// 成员B API: 收藏、售后、评价
+export const favoritesAPI = {
+  getList: (params) => request.get('/favorites', { params }),
+  add: (productId) => request.post('/favorites', { productId }),
+  remove: (productId) => request.delete(`/favorites/${productId}`)
+}
+
+export const afterSalesAPI = {
+  apply: (data) => request.post('/after-sales', data),
+  getMyList: (params) => request.get('/after-sales/my', { params }),
+  getDetail: (id) => request.get(`/after-sales/${id}`),
+  getAdminList: (params) => adminRequest.get('/after-sales/admin/list', { params }),
+  handleApply: (id, handleType, adminRemark) => adminRequest.put(`/after-sales/admin/${id}/handle`, null, { params: { handleType, adminRemark } }),
+  handleRefund: (id, refundAmount) => adminRequest.put(`/after-sales/admin/${id}/refund`, null, { params: { refundAmount } })
+}
+
+export const reviewsAPI = {
+  submit: (data) => request.post('/reviews', data),
+  getList: (params) => request.get('/reviews', { params }),
+  getAdminList: (params) => adminRequest.get('/reviews/admin/list', { params }),
+  reply: (id, replyContent) => adminRequest.put(`/reviews/admin/${id}/reply`, null, { params: { replyContent } }),
+  toggleVisibility: (id, isHidden) => adminRequest.put(`/reviews/admin/${id}/hidden`, null, { params: { isHidden } }),
+  deleteReview: (id) => adminRequest.delete(`/reviews/admin/${id}`)
+}
+
