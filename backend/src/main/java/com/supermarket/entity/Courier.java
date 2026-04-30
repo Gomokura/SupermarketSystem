@@ -11,7 +11,7 @@ import java.util.Date;
 @Data
 @TableName("DELIVERY_PERSONS")
 public class Courier {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer courierId;
     @TableField("REAL_NAME")
     private String courierName;

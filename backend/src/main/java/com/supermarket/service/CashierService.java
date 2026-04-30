@@ -46,6 +46,7 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
     private final OrderService orderService;
+    private final CashierShiftMapper cashierShiftMapper;
 
     public CashierService(CashierRecordMapper cashierRecordMapper,
                           CashierRecordItemMapper cashierRecordItemMapper,
@@ -56,7 +57,8 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
                           CouponMapper couponMapper,
                           OrderMapper orderMapper,
                           OrderItemMapper orderItemMapper,
-                          OrderService orderService) {
+                          OrderService orderService,
+                          CashierShiftMapper cashierShiftMapper) {
         this.cashierRecordMapper = cashierRecordMapper;
         this.cashierRecordItemMapper = cashierRecordItemMapper;
         this.productMapper = productMapper;
@@ -67,6 +69,7 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
         this.orderMapper = orderMapper;
         this.orderItemMapper = orderItemMapper;
         this.orderService = orderService;
+        this.cashierShiftMapper = cashierShiftMapper;
     }
 
     /** 开班 */
@@ -85,6 +88,7 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
         shift.setTotalMockAmount(0.0);
         shift.setStatus("OPEN");
         shift.setStartTime(new Date());
+        shift.setShiftId(cashierShiftMapper.getNextId());
         this.save(shift);
         return Result.success(shift);
     }
@@ -204,10 +208,19 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
         }
         // 2) 创建收银订单（订单侧不做会员券抵扣，券抵扣走 cashier_records 展示；库存仍以订单出库为准）
         Result<?> orderRet = orderService.cashierCreateOrder(cashierId, orderItems, payMethod, receivedAmount);
+        if (orderRet.getCode() != 200) {
+            throw new BusinessException(orderRet.getMessage());
+        }
         @SuppressWarnings("unchecked")
         Map<String, Object> orderData = (Map<String, Object>) orderRet.getData();
-        Integer orderId = orderData != null ? (Integer) orderData.get("orderId") : null;
-        Double totalAmount = orderData != null ? ((Number) orderData.get("totalAmount")).doubleValue() : null;
+        if (orderData == null) {
+            throw new BusinessException("订单创建失败");
+        }
+        Integer orderId = (Integer) orderData.get("orderId");
+        Double totalAmount = orderData.get("totalAmount") != null ? ((Number) orderData.get("totalAmount")).doubleValue() : null;
+        if (orderId == null || totalAmount == null) {
+            throw new BusinessException("订单数据异常");
+        }
 
         // 3) 计算优惠券抵扣（POS 场景：折扣直接从 totalAmount 减）
         double discountAmount = 0.0;
@@ -251,6 +264,7 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
         record.setChangeAmount(change);
         record.setCashierId(cashierId);
         record.setCreateTime(new Date());
+        record.setRecordId(cashierRecordMapper.getNextId());
         cashierRecordMapper.insert(record);
 
         for (CreateOrderRequest.CartItem it : orderItems) {
@@ -274,6 +288,7 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
             cri.setUnitPrice(unit);
             cri.setQuantity(it.getQuantity());
             cri.setSubtotal(Math.round(unit * it.getQuantity() * 100.0) / 100.0);
+            cri.setItemId(cashierRecordItemMapper.getNextId());
             cashierRecordItemMapper.insert(cri);
         }
 

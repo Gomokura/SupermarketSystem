@@ -10,11 +10,14 @@
       </template>
       <el-descriptions :column="2" border>
         <el-descriptions-item label="下单时间">{{ formatDate(order.createTime) }}</el-descriptions-item>
-        <el-descriptions-item label="支付方式">{{ order.payMethod === 'WECHAT' ? '微信支付' : order.payMethod === 'ALIPAY' ? '支付宝' : '现金' }}</el-descriptions-item>
-        <el-descriptions-item label="订单金额">￥{{ order.totalAmount }}</el-descriptions-item>
+        <el-descriptions-item label="支付方式">{{ order.payMethod === 'WECHAT' ? '微信支付' : order.payMethod === 'ALIPAY' ? '支付宝' : order.payMethod === 'BANK' ? '银行卡' : order.payMethod === 'COD' ? '货到付款' : '其他' }}</el-descriptions-item>
+        <el-descriptions-item label="商品总额">￥{{ order.totalAmount }}</el-descriptions-item>
+        <el-descriptions-item label="优惠券抵扣">-￥{{ (order.couponDiscount || 0).toFixed(2) }}</el-descriptions-item>
+        <el-descriptions-item label="积分抵扣">-￥{{ (order.pointsDeductAmount || 0).toFixed(2) }} ({{ order.pointsUsed || 0 }}积分)</el-descriptions-item>
+        <el-descriptions-item label="实付金额" class="pay-amount">￥{{ order.payAmount }}</el-descriptions-item>
         <el-descriptions-item label="收货人">{{ order.receiverName }}</el-descriptions-item>
         <el-descriptions-item label="联系电话">{{ order.receiverPhone }}</el-descriptions-item>
-        <el-descriptions-item label="收货地址">{{ order.receiverAddress }}</el-descriptions-item>
+        <el-descriptions-item label="收货地址" :span="2">{{ order.receiverAddress }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
 
@@ -36,13 +39,13 @@
       </template>
       <el-table :data="items" border>
         <el-table-column prop="productName" label="商品名称" />
-        <el-table-column prop="price" label="单价" width="120">
-          <template #default="{ row }">￥{{ row.price }}</template>
+        <el-table-column prop="unitPrice" label="单价" width="120">
+          <template #default="{ row }">￥{{ row.unitPrice }}</template>
         </el-table-column>
         <el-table-column prop="quantity" label="数量" width="100" />
         <el-table-column label="小计" width="120">
           <template #default="{ row }">
-            <span class="subtotal">￥{{ (row.price * row.quantity).toFixed(2) }}</span>
+            <span class="subtotal">￥{{ ((row.unitPrice || 0) * (row.quantity || 0)).toFixed(2) }}</span>
           </template>
         </el-table-column>
       </el-table>
@@ -173,7 +176,7 @@ const handleReorder = async () => {
 }
 
 const goAfterSale = () => {
-  router.push(`/after-sale?orderId=${order.value.orderId}`)
+  router.push(`/apply-after-sale/${order.value.orderId}`)
 }
 
 const goReview = () => {
@@ -199,6 +202,12 @@ const goBack = () => {
 .subtotal {
   color: #f56c6c;
   font-weight: bold;
+}
+
+.pay-amount {
+  color: #f56c6c;
+  font-weight: bold;
+  font-size: 16px;
 }
 
 .actions {

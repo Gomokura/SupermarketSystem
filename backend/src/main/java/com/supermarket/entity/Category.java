@@ -10,7 +10,7 @@ import java.util.List;
 @Data
 @TableName("CATEGORIES")
 public class Category {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer categoryId;
     private String categoryName;
     private String description;

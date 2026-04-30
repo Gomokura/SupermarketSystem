@@ -19,10 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @Service
 public class ProductService extends ServiceImpl<ProductMapper, Product> {
+
+    @Autowired
+    private ProductMapper productMapper;
 
     @Autowired
     private CategoryMapper categoryMapper;
@@ -136,6 +140,59 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
         return Result.success(list);
     }
 
+    /**
+     * 热销商品TOP10（按销量倒序）
+     */
+    public Result<?> getTopSalesProducts(Integer limit) {
+        int maxLimit = (limit != null && limit > 0) ? limit : 10;
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Product::getStatus, "active");
+        wrapper.eq(Product::getIsDeleted, 0);
+        wrapper.gt(Product::getSalesCount, 0);
+        wrapper.orderByDesc(Product::getSalesCount);
+        Page<Product> page = new Page<>(1, maxLimit);
+        List<Product> list = this.page(page, wrapper).getRecords();
+        return Result.success(list);
+    }
+
+    /**
+     * 新品上市（按创建时间倒序）
+     */
+    public Result<?> getNewProducts(Integer limit) {
+        int maxLimit = (limit != null && limit > 0) ? limit : 10;
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Product::getStatus, "active");
+        wrapper.eq(Product::getIsDeleted, 0);
+        wrapper.orderByDesc(Product::getCreateTime);
+        Page<Product> page = new Page<>(1, maxLimit);
+        List<Product> list = this.page(page, wrapper).getRecords();
+        return Result.success(list);
+    }
+
+    /**
+     * 搜索联想词（返回商品名称中包含关键词的商品名列表）
+     */
+    public Result<?> getSearchSuggestions(String keyword, Integer limit) {
+        if (keyword == null || keyword.isEmpty()) {
+            return Result.success(new ArrayList<>());
+        }
+        int maxLimit = (limit != null && limit > 0) ? limit : 10;
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(Product::getProductName, keyword);
+        wrapper.eq(Product::getStatus, "active");
+        wrapper.eq(Product::getIsDeleted, 0);
+        wrapper.select(Product::getProductId, Product::getProductName);
+        // 使用Page限制数量，兼容Oracle语法
+        Page<Product> page = new Page<>(1, maxLimit);
+        List<Product> list = this.page(page, wrapper).getRecords();
+        // 仅返回名称列表
+        List<String> names = list.stream()
+                .map(Product::getProductName)
+                .distinct()
+                .collect(Collectors.toList());
+        return Result.success(names);
+    }
+
     // ==================== B端商品管理 ====================
 
     /**
@@ -183,6 +240,7 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
         if (product.getStatus() == null) product.setStatus("active");
         product.setCreateTime(new Date());
         product.setUpdateTime(new Date());
+        product.setProductId(productMapper.getNextId());
         this.save(product);
         return Result.success(product.getProductId());
     }
@@ -412,6 +470,21 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
             productSkuMapper.insert(sku);
         } else {
             productSkuMapper.updateById(sku);
+        }
+        return Result.success();
+    }
+
+    @Transactional
+    public Result<?> saveProductSkus(Integer productId, List<ProductSku> skus) {
+        if (skus == null || skus.isEmpty()) return Result.success();
+        for (ProductSku sku : skus) {
+            sku.setProductId(productId);
+            if (sku.getSkuId() == null) {
+                sku.setSkuId(productSkuMapper.getNextId());
+                productSkuMapper.insert(sku);
+            } else {
+                productSkuMapper.updateById(sku);
+            }
         }
         return Result.success();
     }

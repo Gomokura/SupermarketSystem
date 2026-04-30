@@ -14,6 +14,7 @@
       </div>
       <div class="top-actions">
         <el-button size="small" @click="showHistoryDialog = true">历史班次</el-button>
+        <el-button size="small" @click="showOrderHistoryDialog = true">历史订单</el-button>
         <el-button type="warning" size="small" :disabled="!currentShift" @click="showCloseShiftDialog = true">交班</el-button>
       </div>
     </div>
@@ -79,10 +80,10 @@
           </el-input>
           <div class="member-info" v-if="member">
             <el-descriptions :column="2" size="small" border>
-              <el-descriptions-item label="会员">{{ member.name || member.nickname }}</el-descriptions-item>
-              <el-descriptions-item label="等级">{{ member.levelName || member.level || '普通会员' }}</el-descriptions-item>
+              <el-descriptions-item label="会员">{{ member.nickname || member.name }}</el-descriptions-item>
+              <el-descriptions-item label="等级">{{ member.memberLevel || member.levelName || member.level || '普通会员' }}</el-descriptions-item>
               <el-descriptions-item label="积分">{{ member.points || 0 }}</el-descriptions-item>
-              <el-descriptions-item label="可用优惠券">{{ member.couponCount || 0 }} 张</el-descriptions-item>
+              <el-descriptions-item label="可用优惠券">{{ member.availableCouponCount ?? member.couponCount ?? 0 }} 张</el-descriptions-item>
             </el-descriptions>
           </div>
         </el-card>
@@ -177,7 +178,7 @@
           <span class="value">¥{{ (member ? finalAmount : totalAmount).toFixed(2) }}</span>
         </div>
         <div class="checkout-member" v-if="member">
-          <span class="label">会员：{{ member.name || member.nickname }}</span>
+          <span class="label">会员：{{ member.nickname || member.name }}</span>
           <span class="label">积分抵扣：-¥{{ pointsDiscount.toFixed(2) }}</span>
         </div>
       </div>
@@ -294,6 +295,59 @@
       />
     </el-dialog>
 
+    <!-- 历史订单弹窗 -->
+    <el-dialog v-model="showOrderHistoryDialog" title="历史订单查询" width="800">
+      <el-form :inline="true" :model="orderSearchForm" style="margin-bottom: 16px">
+        <el-form-item label="订单号">
+          <el-input v-model="orderSearchForm.orderNo" placeholder="请输入订单号" clearable style="width: 200px" />
+        </el-form-item>
+        <el-form-item label="手机号">
+          <el-input v-model="orderSearchForm.phone" placeholder="请输入手机号" clearable style="width: 150px" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="searchOrders">查询</el-button>
+        </el-form-item>
+      </el-form>
+      <el-table :data="orderHistory" size="small" v-loading="orderHistoryLoading">
+        <el-table-column prop="orderNo" label="订单号" width="180" show-overflow-tooltip />
+        <el-table-column prop="customerName" label="顾客" width="100" />
+        <el-table-column prop="phone" label="手机号" width="120" />
+        <el-table-column prop="totalAmount" label="金额" width="100" align="right">
+          <template #default="{ row }">¥{{ row.totalAmount }}</template>
+        </el-table-column>
+        <el-table-column prop="payMethod" label="支付方式" width="100">
+          <template #default="{ row }">
+            <el-tag size="small">{{ row.payMethod === 'CASH' ? '现金' : '扫码' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getStatusTagType(row.status)" size="small">
+              {{ getStatusText(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createTime" label="时间" width="150" />
+        <el-table-column label="操作" width="100">
+          <template #default="{ row }">
+            <el-button type="danger" size="small" @click="refundOrder(row)" 
+              :disabled="row.status !== 'COMPLETED'">退款</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-pagination
+        v-if="orderHistoryTotal > 0"
+        v-model:current-page="orderHistoryPage"
+        v-model:page-size="orderHistoryPageSize"
+        :total="orderHistoryTotal"
+        :page-sizes="[10, 20, 50]"
+        layout="total, sizes, prev, pager, next"
+        style="margin-top: 12px"
+        @size-change="searchOrders"
+        @current-change="searchOrders"
+      />
+    </el-dialog>
+
     <!-- 成功提示 -->
     <el-dialog v-model="showSuccessDialog" title="结账成功" width="400" show-close>
       <div class="success-content">
@@ -331,6 +385,7 @@ const showOpenShiftDialog = ref(false)
 const showCheckoutDialog = ref(false)
 const showCloseShiftDialog = ref(false)
 const showHistoryDialog = ref(false)
+const showOrderHistoryDialog = ref(false)
 const showSuccessDialog = ref(false)
 
 // 表单
@@ -349,6 +404,14 @@ const historyTotal = ref(0)
 // 成功信息
 const successOrderNo = ref('')
 const successAmount = ref('')
+
+// 历史订单
+const orderSearchForm = ref({ orderNo: '', phone: '' })
+const orderHistory = ref([])
+const orderHistoryLoading = ref(false)
+const orderHistoryPage = ref(1)
+const orderHistoryPageSize = ref(10)
+const orderHistoryTotal = ref(0)
 
 // ========== 计算属性 ==========
 const totalQuantity = computed(() => cartItems.value.reduce((sum, item) => sum + item.quantity, 0))
@@ -375,6 +438,13 @@ const loadCurrentShift = async () => {
   }
 }
 
+const normalizeProduct = (p) => ({
+  id: p.productId ?? p.id,
+  name: p.productName ?? p.name,
+  price: p.price,
+  barcode: p.barcode
+})
+
 // 搜索商品
 const handleSearch = async () => {
   if (!searchKeyword.value.trim()) return
@@ -385,7 +455,7 @@ const handleSearch = async () => {
     try {
       const res = await cashierAPI.getByBarcode(searchKeyword.value.trim())
       if (res.data) {
-        searchResults.value = [res.data]
+        searchResults.value = [normalizeProduct(res.data)]
         return
       }
     } catch {
@@ -393,7 +463,8 @@ const handleSearch = async () => {
     }
     // 关键字搜索
     const res = await cashierAPI.searchProduct(searchKeyword.value.trim())
-    searchResults.value = res.data?.list || res.data || []
+    const raw = res.data?.records || res.data?.list || res.data || []
+    searchResults.value = Array.isArray(raw) ? raw.map(normalizeProduct) : []
   } catch {
     searchResults.value = []
   }
@@ -481,27 +552,17 @@ const handleCheckout = async () => {
 
   loading.value = true
   try {
-    const orderData = {
+    const checkoutData = {
+      memberPhone: memberPhone.value || undefined,
+      payMethod: payMethod.value === 'cash' ? 'CASH' : 'MOCK_CARD',
+      receivedAmount: payMethod.value === 'cash' ? cashForm.value.received : undefined,
       items: cartItems.value.map(item => ({
         productId: item.id,
-        productName: item.name,
-        price: item.price,
         quantity: item.quantity
-      })),
-      totalAmount: totalAmount.value,
-      discountAmount: member.value ? pointsDiscount.value : 0,
-      payAmount: amount,
-      payMethod: payMethod.value === 'cash' ? 'cash' : 'scan',
-      memberId: member.value?.id,
-      memberPhone: memberPhone.value
+      }))
     }
 
-    if (payMethod.value === 'cash') {
-      orderData.cashReceived = cashForm.value.received
-      orderData.change = Math.max(0, changeAmount.value)
-    }
-
-    const res = await orderAPI.cashierCreate(orderData)
+    const res = await cashierAPI.checkout(checkoutData)
     successOrderNo.value = res.data?.orderNo || res.data?.id || '-'
     successAmount.value = amount.toFixed(2)
 
@@ -554,6 +615,59 @@ const loadHistory = async () => {
   } finally {
     historyLoading.value = false
   }
+}
+
+// 历史订单查询
+const searchOrders = async () => {
+  orderHistoryLoading.value = true
+  try {
+    const res = await cashierAPI.getOrderHistory({
+      pageNum: orderHistoryPage.value,
+      pageSize: orderHistoryPageSize.value,
+      orderNo: orderSearchForm.value.orderNo,
+      phone: orderSearchForm.value.phone
+    })
+    orderHistory.value = res.data?.records || res.data || []
+    orderHistoryTotal.value = res.data?.total || 0
+  } catch {
+    orderHistory.value = []
+  } finally {
+    orderHistoryLoading.value = false
+  }
+}
+
+// 订单退款
+const refundOrder = async (order) => {
+  try {
+    await ElMessageBox.confirm(`确定退款订单 ${order.orderNo} 吗？金额：¥${order.totalAmount}`, '退款确认', {
+      type: 'warning'
+    })
+    await cashierAPI.refund(order.orderId)
+    ElMessage.success('退款成功')
+    searchOrders()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('退款失败')
+  }
+}
+
+// 获取订单状态标签类型
+const getStatusTagType = (status) => {
+  const map = {
+    COMPLETED: 'success',
+    REFUNDED: 'danger',
+    CANCELLED: 'info'
+  }
+  return map[status] || ''
+}
+
+// 获取订单状态文本
+const getStatusText = (status) => {
+  const map = {
+    COMPLETED: '已完成',
+    REFUNDED: '已退款',
+    CANCELLED: '已取消'
+  }
+  return map[status] || status
 }
 
 // ========== 初始化 ==========

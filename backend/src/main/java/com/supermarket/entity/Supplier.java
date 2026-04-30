@@ -9,7 +9,7 @@ import lombok.Data;
 @Data
 @TableName("SUPPLIERS")
 public class Supplier {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer supplierId;
     private String supplierName;
     @TableField("CONTACT_NAME")

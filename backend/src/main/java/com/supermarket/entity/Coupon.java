@@ -9,7 +9,7 @@ import java.util.Date;
 @Data
 @TableName("COUPONS")
 public class Coupon {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer couponId;
     private String couponName;
     private String description;

@@ -9,7 +9,7 @@ import lombok.Data;
 @Data
 @TableName("PURCHASE_ORDER_ITEMS")
 public class PurchaseOrderItem {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer itemId;
     private Integer poId;
     private Integer productId;

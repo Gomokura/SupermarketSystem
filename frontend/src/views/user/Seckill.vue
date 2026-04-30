@@ -16,8 +16,8 @@
         <el-card>
           <template #header>
             <div class="activity-header">
-              <span class="activity-name">{{ activity.activityName }}</span>
-              <el-tag :type="stateTag(activity.state)">{{ stateLabel(activity.state) }}</el-tag>
+              <span class="activity-name">{{ activity.seckillName || activity.activityName }}</span>
+              <el-tag :type="stateTag(activity.currentState || activity.state || 'active')">{{ stateLabel(activity.currentState || activity.state || 'active') }}</el-tag>
               <span class="activity-time">
                 {{ formatDate(activity.startTime) }} ~ {{ formatDate(activity.endTime) }}
               </span>
@@ -29,14 +29,14 @@
               <el-col
                 :xs="12" :sm="8" :md="6"
                 v-for="sp in activityProducts[activity.seckillId]"
-                :key="sp.seckillProductId"
+                :key="sp.id"
               >
                 <el-card
                   shadow="hover"
                   class="product-card"
                   @click="goToProduct(sp.productId)"
                 >
-                  <img :src="sp.coverImage || sp.imageUrl" class="product-img" />
+                  <img :src="sp.coverImage || sp.imageUrl || getProductImage(sp.productId, 'landscape_4_3')" class="product-img" />
                   <div class="product-name">{{ sp.productName }}</div>
                   <div class="price-block">
                     <span class="seckill-price">￥{{ sp.seckillPrice }}</span>
@@ -49,15 +49,15 @@
                     status="exception"
                     class="stock-bar"
                   />
-                  <div class="stock-text">仅剩 {{ sp.remainStock }} 件</div>
+                  <div class="stock-text">仅剩 {{ sp.seckillStock }} 件</div>
                   <el-button
                     type="danger"
                     size="small"
                     style="width:100%;margin-top:8px"
-                    :disabled="sp.remainStock === 0 || activity.state !== 'running'"
+                    :disabled="sp.seckillStock === 0 || (activity.currentState !== 'running' && activity.currentState !== 'active')"
                     @click.stop="addToCart(sp)"
                   >
-                    {{ sp.remainStock === 0 ? '已抢光' : '立即抢购' }}
+                    {{ sp.seckillStock === 0 ? '已抢光' : '立即抢购' }}
                   </el-button>
                 </el-card>
               </el-col>
@@ -87,6 +87,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { seckillAPI, cartAPI } from '@/api'
+import { getProductImage } from '@/utils/image'
 
 const router = useRouter()
 const activities = ref([])
@@ -110,6 +111,7 @@ const loadActivities = async () => {
       loadActivityProducts(a.seckillId)
     }
   } catch (e) {
+    ElMessage.error('加载秒杀活动失败')
     console.error(e)
   } finally {
     loading.value = false
@@ -130,18 +132,23 @@ const addToCart = async (sp) => {
     await cartAPI.add(sp.productId, 1, sp.skuId)
     ElMessage.success('已加入购物车，快去结算吧！')
     router.push('/checkout')
-  } catch (e) { console.error(e) }
+  } catch (e) {
+    ElMessage.error('加购失败')
+    console.error(e)
+  }
 }
 
 const goToProduct = (id) => router.push(`/products/${id}`)
 
 const stockPercent = (sp) => {
-  if (!sp.totalStock) return 0
-  return Math.round((sp.remainStock / sp.totalStock) * 100)
+  if (!sp.seckillStock) return 0
+  const total = sp.seckillStock + (sp.soldCount || 0)
+  if (!total) return 0
+  return Math.round((sp.seckillStock / total) * 100)
 }
 
-const stateLabel = (state) => ({ running: '进行中', pending: '即将开始', paused: '已暂停', ended: '已结束' }[state] || state)
-const stateTag = (state) => ({ running: 'danger', pending: 'warning', paused: 'info', ended: 'info' }[state] || '')
+const stateLabel = (state) => ({ running: '进行中', pending: '即将开始', paused: '已暂停', ended: '已结束', active: '进行中' }[state] || state)
+const stateTag = (state) => ({ running: 'danger', pending: 'warning', paused: 'info', ended: 'info', active: 'danger' }[state] || '')
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''

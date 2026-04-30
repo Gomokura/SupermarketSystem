@@ -9,7 +9,7 @@ import lombok.Data;
 @Data
 @TableName("STOCKTAKE_ITEMS")
 public class StocktakeItem {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer id;
     private Integer taskId;
     private Integer productId;

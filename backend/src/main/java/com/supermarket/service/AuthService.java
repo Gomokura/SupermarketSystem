@@ -2,25 +2,26 @@ package com.supermarket.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.supermarket.common.PasswordEncoder;
 import com.supermarket.common.Result;
 import com.supermarket.config.JwtConfig;
 import com.supermarket.dto.LoginRequest;
 import com.supermarket.dto.RegisterRequest;
 import com.supermarket.entity.Admin;
 import com.supermarket.entity.Courier;
+import com.supermarket.entity.Coupon;
 import com.supermarket.entity.User;
 import com.supermarket.entity.UserCoupon;
 import com.supermarket.mapper.AdminMapper;
 import com.supermarket.mapper.CourierMapper;
+import com.supermarket.mapper.CouponMapper;
 import com.supermarket.mapper.UserMapper;
 import com.supermarket.mapper.UserCouponMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.DigestUtils;
-
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -28,6 +29,9 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
 
     @Autowired
     private JwtConfig jwtConfig;
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Autowired
     private AdminMapper adminMapper;
@@ -38,11 +42,21 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
     @Autowired
     private UserCouponMapper userCouponMapper;
 
+    @Autowired
+    private CouponMapper couponMapper;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     // ==================== C端用户 ====================
 
     public Result<?> login(LoginRequest request) {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, request.getUsername());
+        if (request.getPhone() != null && !request.getPhone().isEmpty()) {
+            wrapper.eq(User::getPhone, request.getPhone());
+        } else {
+            wrapper.eq(User::getUsername, request.getUsername());
+        }
         User user = this.getOne(wrapper);
 
         if (user == null) {
@@ -53,8 +67,7 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
             return Result.error("账号已被封禁" + (user.getBanReason() != null ? "：" + user.getBanReason() : ""));
         }
 
-        String md5Password = DigestUtils.md5DigestAsHex(request.getPassword().getBytes(StandardCharsets.UTF_8));
-        if (!md5Password.equals(user.getPassword())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             return Result.error("密码错误");
         }
 
@@ -68,6 +81,7 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
         data.put("avatarUrl", user.getAvatarUrl());
         data.put("memberLevel", user.getMemberLevel());
         data.put("points", user.getPoints());
+        data.put("phone", user.getPhone());
         return Result.success(data);
     }
 
@@ -89,21 +103,64 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
 
         User user = new User();
         user.setUsername(request.getUsername());
-        user.setPassword(DigestUtils.md5DigestAsHex(request.getPassword().getBytes(StandardCharsets.UTF_8)));
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRealName(request.getRealName());
         user.setPhone(request.getPhone());
         user.setEmail(request.getEmail());
         if (request.getNickname() != null && !request.getNickname().isEmpty()) {
             user.setNickname(request.getNickname());
         } else {
-            user.setNickname(request.getUsername()); // 默认昵称=用户名
+            user.setNickname(request.getUsername());
         }
         user.setStatus("active");
         user.setMemberLevel("NORMAL");
         user.setPoints(0);
         user.setCreateTime(new Date());
+        user.setUserId(userMapper.getNextId());
         this.save(user);
+
+        // 发放新人优惠券
+        grantNewUserCoupons(user.getUserId());
+
         return Result.success("注册成功");
+    }
+
+    /** 发放新人优惠券 */
+    private void grantNewUserCoupons(Integer userId) {
+        try {
+            LambdaQueryWrapper<Coupon> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Coupon::getStatus, "active");
+            wrapper.eq(Coupon::getCouponType, "new_user");
+            List<Coupon> newUserCoupons = couponMapper.selectList(wrapper);
+            
+            Date now = new Date();
+            for (Coupon coupon : newUserCoupons) {
+                // 检查有效期
+                if (coupon.getStartTime() != null && now.before(coupon.getStartTime())) continue;
+                if (coupon.getEndTime() != null && now.after(coupon.getEndTime())) continue;
+                
+                // 检查总量限制
+                if (coupon.getTotalCount() != null && coupon.getTotalCount() > 0
+                        && coupon.getIssuedCount() >= coupon.getTotalCount()) {
+                    continue;
+                }
+                
+                // 发放优惠券
+                UserCoupon uc = new UserCoupon();
+                uc.setUcId(userCouponMapper.getNextId());
+                uc.setUserId(userId);
+                uc.setCouponId(coupon.getCouponId());
+                uc.setStatus("unused");
+                uc.setGetTime(now);
+                userCouponMapper.insert(uc);
+                
+                // 更新发放数量
+                coupon.setIssuedCount(coupon.getIssuedCount() + 1);
+                couponMapper.updateById(coupon);
+            }
+        } catch (Exception e) {
+            // 优惠券发放失败不影响用户注册
+        }
     }
 
     public Result<?> getUserInfo(Integer userId) {
@@ -121,12 +178,14 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
             return Result.error("用户不存在");
         }
         // 只允许修改以下字段
+        if (updateData.getUsername() != null) user.setUsername(updateData.getUsername());
         if (updateData.getNickname() != null) user.setNickname(updateData.getNickname());
         if (updateData.getAvatarUrl() != null) user.setAvatarUrl(updateData.getAvatarUrl());
         if (updateData.getGender() != null) user.setGender(updateData.getGender());
         if (updateData.getBirthday() != null) user.setBirthday(updateData.getBirthday());
         if (updateData.getEmail() != null) user.setEmail(updateData.getEmail());
         if (updateData.getRealName() != null) user.setRealName(updateData.getRealName());
+        if (updateData.getPhone() != null) user.setPhone(updateData.getPhone());
         user.setUpdateTime(new Date());
         this.updateById(user);
         user.setPassword(null);
@@ -138,11 +197,10 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
         if (user == null) {
             return Result.error("用户不存在");
         }
-        String oldMd5 = DigestUtils.md5DigestAsHex(oldPassword.getBytes(StandardCharsets.UTF_8));
-        if (!oldMd5.equals(user.getPassword())) {
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
             return Result.error("原密码错误");
         }
-        user.setPassword(DigestUtils.md5DigestAsHex(newPassword.getBytes(StandardCharsets.UTF_8)));
+        user.setPassword(passwordEncoder.encode(newPassword));
         user.setUpdateTime(new Date());
         this.updateById(user);
         return Result.success("密码修改成功");
@@ -159,18 +217,13 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
             return Result.error("管理员不存在");
         }
 
-        String md5Password = DigestUtils.md5DigestAsHex(request.getPassword().getBytes(StandardCharsets.UTF_8));
-        if (!md5Password.equals(admin.getPassword())) {
+        if (!passwordEncoder.matches(request.getPassword(), admin.getPassword())) {
             return Result.error("密码错误");
         }
 
         if ("disabled".equals(admin.getStatus())) {
             return Result.error("账号已被禁用");
         }
-
-        // 更新最后登录时间
-        admin.setLastLogin(new Date());
-        adminMapper.updateById(admin);
 
         String token = jwtConfig.generateToken(admin.getAdminId(), admin.getUsername(), admin.getRole());
 
@@ -196,11 +249,10 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
 
     public Result<?> courierLogin(LoginRequest request) {
         LambdaQueryWrapper<Courier> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Courier::getPhone, request.getUsername()); // 配送员用手机号登录
+        wrapper.eq(Courier::getPhone, request.getUsername());
         Courier courier = courierMapper.selectOne(wrapper);
 
         if (courier == null) {
-            // 也支持用courierName登录（兜底）
             LambdaQueryWrapper<Courier> nameWrapper = new LambdaQueryWrapper<>();
             nameWrapper.eq(Courier::getCourierName, request.getUsername());
             courier = courierMapper.selectOne(nameWrapper);
@@ -210,8 +262,7 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
             return Result.error("配送员账号不存在");
         }
 
-        String md5Password = DigestUtils.md5DigestAsHex(request.getPassword().getBytes(StandardCharsets.UTF_8));
-        if (!md5Password.equals(courier.getPassword())) {
+        if (!passwordEncoder.matches(request.getPassword(), courier.getPassword())) {
             return Result.error("密码错误");
         }
 

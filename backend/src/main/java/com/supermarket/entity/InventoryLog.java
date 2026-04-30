@@ -10,7 +10,7 @@ import java.util.Date;
 @Data
 @TableName("INVENTORY_LOGS")
 public class InventoryLog {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer logId;
     private Integer productId;
     /** SKU ID（有多规格时记录 SKU 级变动），对应数据库 SKU_ID */
@@ -24,9 +24,12 @@ public class InventoryLog {
     private Integer refId;         // 数据库字段 REF_ID（关联记录ID）
     private Date createTime;       // 数据库字段 CREATE_TIME
 
-    // 补充字段
+    // 补充字段（非数据库字段）
+    @TableField(exist = false)
     private Integer beforeStock;   // 变动前库存
+    @TableField(exist = false)
     private Integer afterStock;    // 变动后库存
+    @TableField(exist = false)
     private String refNo;          // 关联单号文字
 
     // 非数据库字段（联表）

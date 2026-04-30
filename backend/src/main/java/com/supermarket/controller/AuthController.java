@@ -5,6 +5,7 @@ import com.supermarket.dto.LoginRequest;
 import com.supermarket.dto.RegisterRequest;
 import com.supermarket.entity.User;
 import com.supermarket.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -106,7 +107,7 @@ public class AuthController {
     }
 
     /**
-     * 退出登录（本项目未实现 token 黑名单）
+     * 退出登录
      * POST /auth/logout
      */
     @PostMapping("/logout")

@@ -1,16 +1,34 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
-import { useUserStore } from '@/stores/user'
 
 const request = axios.create({
   baseURL: '/api',
   timeout: 10000
 })
 
+const clearAuthStorage = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('adminToken')
+  localStorage.removeItem('courierToken')
+  localStorage.removeItem('user')
+  localStorage.removeItem('cart')
+  localStorage.removeItem('searchHistory')
+}
+
 request.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token')
+    const path = config.url || ''
+    let token = null
+    
+    if (path.startsWith('/admin') || path.startsWith('/cashier')) {
+      token = localStorage.getItem('adminToken')
+    } else if (path.startsWith('/courier')) {
+      token = localStorage.getItem('courierToken')
+    } else {
+      token = localStorage.getItem('token')
+    }
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -33,10 +51,17 @@ request.interceptors.response.use(
   },
   error => {
     if (error.response?.status === 401) {
-      const userStore = useUserStore()
-      userStore.logout()
-      router.push('/login')
-      ElMessage.error('登录已过期，请重新登录')
+      clearAuthStorage()
+      const msg = error.response?.data?.message || '登录已过期，请重新登录'
+      ElMessage.error(msg)
+      const path = error.config?.url || ''
+      if (path.startsWith('/courier')) {
+        router.push('/login?role=courier')
+      } else if (path.startsWith('/admin') || path.startsWith('/cashier')) {
+        router.push('/login?role=admin')
+      } else {
+        router.push('/login?role=customer')
+      }
     } else {
       const msg = error.response?.data?.message
       const noResponse = !error.response

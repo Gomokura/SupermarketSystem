@@ -10,9 +10,8 @@ import java.util.Date;
 @Data
 @TableName("ACTIVITIES")
 public class Promotion {
-    @TableId(type = IdType.AUTO)
-    @TableField("ACTIVITY_ID")
-    private Integer promotionId;
+    @TableId(value = "ACTIVITY_ID", type = IdType.INPUT)
+    private Integer activityId;
     @TableField("ACTIVITY_NAME")
     private String promoName;
     @TableField("ACTIVITY_TYPE")

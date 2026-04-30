@@ -1,110 +1,129 @@
 <template>
-  <div class="page-container">
-    <el-row :gutter="24">
-      <!-- 左侧：商品信息 -->
-      <el-col :span="16">
-        <el-card>
-          <el-row :gutter="20">
-            <el-col :span="10">
-              <img :src="product.coverImage" :alt="product.productName || '商品封面'" class="main-img" />
-            </el-col>
-            <el-col :span="14">
-              <h2 class="product-name">{{ product.productName }}</h2>
-              <div class="brand-tag" v-if="product.brandName">品牌：{{ product.brandName }}</div>
+  <div class="detail-wrap" v-loading="loading">
+    <!-- 返回按钮 -->
+    <div class="nav-bar">
+      <el-button link @click="$router.back()"><el-icon><ArrowLeft /></el-icon></el-button>
+      <span class="nav-title">商品详情</span>
+      <el-button link @click="$router.push('/cart')">
+        <el-icon><ShoppingCart /></el-icon>
+      </el-button>
+    </div>
 
-              <div class="price-block">
-                <span class="price">￥{{ currentPrice }}</span>
-                <span v-if="product.originalPrice > product.price" class="original-price">￥{{ product.originalPrice }}</span>
-              </div>
+    <template v-if="product.productId">
+      <!-- 商品主图 -->
+      <div class="img-wrap">
+        <img
+          :src="product.coverImage || imgFallback(product.productId)"
+          class="main-img"
+          @error="e => e.target.src = imgFallback(product.productId)"
+        />
+      </div>
 
-              <div class="stock-block">
-                <span v-if="isLowStock" class="low-stock-tip">仅剩 {{ currentStock }} 件</span>
-                <span v-else class="stock-normal">库存：{{ currentStock }}</span>
-              </div>
+      <!-- 价格信息 -->
+      <div class="price-section">
+        <div class="price-row">
+          <span class="price">￥{{ currentPrice }}</span>
+          <span v-if="product.originalPrice > product.price" class="original-price">￥{{ product.originalPrice }}</span>
+          <el-tag v-if="isLowStock" type="danger" size="small" effect="plain" style="margin-left:8px">
+            仅剩 {{ currentStock }} 件
+          </el-tag>
+        </div>
+        <div class="product-name">{{ product.productName }}</div>
+        <div class="product-meta">
+          <span v-if="product.brandName" class="meta-tag">{{ product.brandName }}</span>
+          <span class="meta-tag">已售 {{ product.salesCount || 0 }}</span>
+          <el-rate :model-value="product.rating || 0" disabled size="small" />
+        </div>
+      </div>
 
-              <!-- SKU 规格选择 -->
-              <div v-if="skus.length" class="sku-block">
-                <div class="sku-label">规格：</div>
-                <el-radio-group v-model="selectedSkuId">
-                  <el-radio-button
-                    v-for="sku in skus"
-                    :key="sku.skuId"
-                    :value="sku.skuId"
-                    :disabled="sku.stock === 0"
-                  >
-                    {{ sku.skuName }}
-                  </el-radio-button>
-                </el-radio-group>
-              </div>
+      <!-- SKU规格 -->
+      <div class="section" v-if="skus.length">
+        <div class="section-label">选择规格</div>
+        <div class="sku-tags">
+          <div
+            v-for="sku in skus"
+            :key="sku.skuId"
+            class="sku-tag"
+            :class="{ selected: selectedSkuId === sku.skuId, disabled: sku.stock === 0 }"
+            @click="sku.stock > 0 && (selectedSkuId = sku.skuId)"
+          >{{ sku.skuName }}</div>
+        </div>
+      </div>
 
-              <div class="qty-block">
-                <span>数量：</span>
-                <el-input-number v-model="quantity" :min="1" :max="currentStock" />
-              </div>
+      <!-- 数量选择 -->
+      <div class="section qty-section">
+        <div class="section-label">购买数量</div>
+        <el-input-number v-model="quantity" :min="1" :max="currentStock || 999" size="small" />
+      </div>
 
-              <div class="action-block">
-                <el-button type="primary" size="large" @click="addToCart" :disabled="currentStock === 0">
-                  加入购物车
-                </el-button>
-                <el-button size="large" @click="buyNow" :disabled="currentStock === 0">立即购买</el-button>
-                <el-button size="large" :type="isFavorite ? 'danger' : 'info'" :plain="!isFavorite" @click="toggleFavorite">
-                  <el-icon style="margin-right: 4px"><Star v-if="!isFavorite" /><StarFilled v-else /></el-icon>
-                  {{ isFavorite ? '已收藏' : '收藏' }}
-                </el-button>
-              </div>
-            </el-col>
-          </el-row>
+      <!-- 商品详情 -->
+      <div class="section">
+        <div class="section-label">商品详情</div>
+        <p class="description">{{ product.description || '暂无详情说明' }}</p>
+      </div>
 
-          <!-- 商品描述 -->
-          <el-divider />
-          <div class="description">
-            <h3>商品详情</h3>
-            <p>{{ product.description || '暂无详情' }}</p>
+      <!-- 评价 -->
+      <div class="section" v-if="reviews.length">
+        <div class="section-label-row">
+          <span class="section-label">商品评价</span>
+          <span class="review-count">{{ reviews.length }} 条</span>
+        </div>
+        <div class="review-item" v-for="r in reviews.slice(0, 3)" :key="r.reviewId">
+          <div class="review-head">
+            <span class="reviewer">{{ r.isAnonymous ? '匿名用户' : r.username }}</span>
+            <el-rate :model-value="r.rating" disabled size="small" />
+            <span class="review-time">{{ formatDate(r.createTime) }}</span>
           </div>
-        </el-card>
-
-        <!-- 商品评价 -->
-        <el-card class="reviews-card">
-          <template #header>
-            <span>商品评价（{{ reviews.length }}条）</span>
-          </template>
-          <div v-if="reviews.length === 0" class="no-reviews">暂无评价</div>
-          <div v-for="review in reviews" :key="review.reviewId" class="review-item">
-            <div class="review-header">
-              <span class="reviewer">{{ review.isAnonymous ? '匿名用户' : review.username }}</span>
-              <el-rate :model-value="review.rating" disabled size="small" />
-              <span class="review-time">{{ formatDate(review.createTime) }}</span>
-            </div>
-            <div class="review-tags" v-if="review.tags">
-              <el-tag v-for="tag in review.tags.split(',')" :key="tag" size="small" style="margin-right: 4px">{{ tag }}</el-tag>
-            </div>
-            <p class="review-content">{{ review.content }}</p>
-            <div v-if="review.adminReply" class="admin-reply">
-              <span>商家回复：</span>{{ review.adminReply }}
-            </div>
+          <div class="review-tags" v-if="r.tags">
+            <el-tag v-for="tag in r.tags.split(',')" :key="tag" size="small" style="margin:2px">{{ tag }}</el-tag>
           </div>
-        </el-card>
-      </el-col>
+          <p class="review-content">{{ r.content }}</p>
+          <div v-if="r.adminReply" class="admin-reply">商家回复：{{ r.adminReply }}</div>
+        </div>
+      </div>
 
-      <!-- 右侧：相关推荐 -->
-      <el-col :span="8">
-        <el-card>
-          <template #header><span>相关推荐</span></template>
+      <!-- 相关推荐 -->
+      <div class="section" v-if="relatedProducts.length">
+        <div class="section-label">相关推荐</div>
+        <div class="related-list">
           <div
             v-for="p in relatedProducts"
             :key="p.productId"
             class="related-item"
             @click="$router.push(`/products/${p.productId}`)"
           >
-            <img :src="p.coverImage" :alt="p.productName || '相关商品图片'" class="related-img" />
-            <div class="related-info">
-              <div class="related-name">{{ p.productName }}</div>
-              <div class="related-price">￥{{ p.price }}</div>
-            </div>
+            <img :src="p.coverImage || imgFallback(p.productId)" class="related-img"
+              @error="e => e.target.src = imgFallback(p.productId)" />
+            <div class="related-name">{{ p.productName }}</div>
+            <div class="related-price">￥{{ p.price }}</div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </div>
+      </div>
+
+      <!-- 底部操作栏 -->
+      <div class="action-bar">
+        <div class="action-icons">
+          <div class="action-icon" @click="$router.push('/')">
+            <el-icon :size="20"><HomeFilled /></el-icon>
+            <span>首页</span>
+          </div>
+          <div class="action-icon" @click="$router.push('/cart')">
+            <el-icon :size="20"><ShoppingCart /></el-icon>
+            <span>购物车</span>
+          </div>
+          <div class="action-icon" @click="toggleFavorite" :style="{ color: isFavorite ? '#ff4d4f' : '#666' }">
+            <el-icon :size="20"><StarFilled v-if="isFavorite" /><Star v-else /></el-icon>
+            <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
+          </div>
+        </div>
+        <div class="action-btns">
+          <el-button @click="addToCart" :disabled="currentStock === 0"
+            style="border-radius:0;background:#ff7875;border-color:#ff7875;color:#fff">加入购物车</el-button>
+          <el-button type="primary" @click="buyNow" :disabled="currentStock === 0"
+            style="border-radius:0 20px 20px 0;background:#ff4d4f;border-color:#ff4d4f">立即购买</el-button>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -112,7 +131,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Star, StarFilled } from '@element-plus/icons-vue'
+import { ArrowLeft, ShoppingCart, Star, StarFilled, HomeFilled } from '@element-plus/icons-vue'
 import { productAPI, cartAPI, reviewAPI, favoriteAPI } from '@/api'
 
 const route = useRoute()
@@ -125,28 +144,28 @@ const relatedProducts = ref([])
 const selectedSkuId = ref(null)
 const quantity = ref(1)
 const isFavorite = ref(false)
+const loading = ref(false)
+
+const imgFallback = (id) => `https://picsum.photos/seed/p${id}/600/600`
 
 const selectedSku = computed(() => skus.value.find(s => s.skuId === selectedSkuId.value))
 const currentPrice = computed(() => selectedSku.value?.price ?? product.value.price ?? 0)
 const currentStock = computed(() => selectedSku.value?.stock ?? product.value.stock ?? 0)
 const isLowStock = computed(() => currentStock.value > 0 && currentStock.value <= (product.value.warningStock || 10))
 
-onMounted(() => {
-  loadProduct()
-})
-
-watch(() => route.params.id, () => {
-  loadProduct()
-})
+onMounted(loadProduct)
+watch(() => route.params.id, loadProduct)
 
 const loadProduct = async () => {
   const id = route.params.id
+  if (!id) return
+  loading.value = true
   try {
     const [prodRes, skuRes, reviewRes, favRes] = await Promise.all([
       productAPI.getById(id),
       productAPI.getSkus(id),
       reviewAPI.getByProduct(id, { pageNum: 1, pageSize: 10 }),
-      favoriteAPI.getMyFavorites()
+      favoriteAPI.getMyFavorites().catch(() => ({ data: [] }))
     ])
     product.value = prodRes.data || {}
     skus.value = skuRes.data || []
@@ -154,42 +173,34 @@ const loadProduct = async () => {
 
     const favList = favRes.data || []
     isFavorite.value = favList.some(f => (f.productId || f.id) === Number(id))
+    if (skus.value.length > 0) selectedSkuId.value = skus.value[0].skuId
 
-    if (skus.value.length > 0) {
-      selectedSkuId.value = skus.value[0].skuId
-    }
-
-    // 加载同分类相关商品
     if (product.value.categoryId) {
-      const relRes = await productAPI.getList({
-        categoryId: product.value.categoryId,
-        pageNum: 1,
-        pageSize: 6
-      })
-      relatedProducts.value = (relRes.data?.records || []).filter(p => p.productId !== Number(id))
+      const relRes = await productAPI.getList({ categoryId: product.value.categoryId, pageNum: 1, pageSize: 6 })
+      relatedProducts.value = (relRes.data?.records || []).filter(p => p.productId !== Number(id)).slice(0, 5)
     }
-  } catch (e) {
-    console.error(e)
-  }
+  } catch (e) { console.error(e) }
+  finally { loading.value = false }
 }
 
 const toggleFavorite = async () => {
+  const token = localStorage.getItem('token')
+  if (!token) { ElMessage.warning('请先登录'); router.push('/login'); return }
   try {
     if (isFavorite.value) {
       await favoriteAPI.remove(product.value.productId)
       ElMessage.success('已取消收藏')
-      isFavorite.value = false
     } else {
       await favoriteAPI.add(product.value.productId)
       ElMessage.success('已收藏')
-      isFavorite.value = true
     }
-  } catch (error) {
-    console.error(error)
-  }
+    isFavorite.value = !isFavorite.value
+  } catch (e) { console.error(e) }
 }
 
 const addToCart = async () => {
+  const token = localStorage.getItem('token')
+  if (!token) { ElMessage.warning('请先登录'); router.push('/login'); return }
   try {
     await cartAPI.add(product.value.productId, quantity.value, selectedSkuId.value)
     ElMessage.success('已加入购物车')
@@ -198,43 +209,75 @@ const addToCart = async () => {
 
 const buyNow = async () => {
   await addToCart()
-  router.push('/checkout')
+  router.push('/cart')
 }
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('zh-CN')
-}
+const formatDate = (d) => d ? new Date(d).toLocaleDateString('zh-CN') : ''
 </script>
 
 <style scoped>
-.main-img { width: 100%; border-radius: 8px; }
-.product-name { font-size: 20px; margin-bottom: 8px; }
-.brand-tag { color: #666; font-size: 13px; margin-bottom: 12px; }
-.price-block { margin-bottom: 12px; }
-.price { color: #f56c6c; font-size: 28px; font-weight: bold; }
-.original-price { color: #999; font-size: 14px; text-decoration: line-through; margin-left: 10px; }
-.stock-block { margin-bottom: 12px; }
-.low-stock-tip { color: #e6a23c; font-size: 13px; }
-.stock-normal { color: #666; font-size: 13px; }
-.sku-block { margin-bottom: 16px; }
-.sku-label { font-size: 14px; margin-bottom: 8px; }
-.qty-block { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-.action-block { display: flex; gap: 12px; }
-.description { padding: 10px 0; }
-.reviews-card { margin-top: 20px; }
-.no-reviews { color: #999; text-align: center; padding: 20px; }
-.review-item { border-bottom: 1px solid #f0f0f0; padding: 12px 0; }
-.review-header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-.reviewer { font-weight: 500; }
-.review-time { color: #999; font-size: 12px; margin-left: auto; }
+.detail-wrap { background: #f5f5f5; min-height: 100%; padding-bottom: 70px; }
+
+.nav-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 12px; background: #fff; position: sticky; top: 0; z-index: 10;
+}
+.nav-title { font-size: 16px; font-weight: bold; }
+
+.img-wrap { background: #fff; }
+.main-img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+
+.price-section { background: #fff; padding: 12px 14px; margin-bottom: 8px; }
+.price-row { display: flex; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+.price { color: #ff4d4f; font-size: 26px; font-weight: bold; }
+.original-price { color: #bbb; font-size: 13px; text-decoration: line-through; }
+.product-name { font-size: 16px; color: #222; font-weight: 500; margin-bottom: 8px; line-height: 1.4; }
+.product-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.meta-tag { font-size: 12px; color: #888; background: #f5f5f5; padding: 2px 8px; border-radius: 10px; }
+
+.section { background: #fff; padding: 14px; margin-bottom: 8px; }
+.section-label { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 10px; }
+.section-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.review-count { font-size: 12px; color: #999; }
+
+.sku-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.sku-tag {
+  padding: 6px 14px; border-radius: 16px; font-size: 13px;
+  border: 1px solid #ddd; cursor: pointer; background: #fff; color: #333;
+}
+.sku-tag.selected { border-color: #ff4d4f; color: #ff4d4f; background: #fff0f0; }
+.sku-tag.disabled { opacity: 0.4; cursor: not-allowed; }
+
+.qty-section { display: flex; align-items: center; justify-content: space-between; }
+
+.description { font-size: 14px; color: #555; line-height: 1.6; }
+
+.review-item { border-bottom: 1px solid #f5f5f5; padding-bottom: 12px; margin-bottom: 12px; }
+.review-item:last-child { border-bottom: none; margin-bottom: 0; }
+.review-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.reviewer { font-size: 13px; font-weight: 500; }
+.review-time { font-size: 11px; color: #bbb; margin-left: auto; }
 .review-tags { margin-bottom: 6px; }
-.review-content { color: #333; font-size: 14px; }
-.admin-reply { background: #f5f5f5; padding: 8px; border-radius: 4px; font-size: 13px; color: #666; margin-top: 6px; }
-.related-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
-.related-item:hover { background: #fafafa; }
-.related-img { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
-.related-info { flex: 1; }
-.related-name { font-size: 13px; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.related-price { color: #f56c6c; font-weight: bold; }
+.review-content { font-size: 13px; color: #444; }
+.admin-reply { background: #f8f8f8; padding: 8px; border-radius: 6px; font-size: 12px; color: #888; margin-top: 6px; }
+
+.related-list { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
+.related-list::-webkit-scrollbar { display: none; }
+.related-item { flex-shrink: 0; width: 100px; cursor: pointer; }
+.related-img { width: 100px; height: 100px; border-radius: 8px; object-fit: cover; display: block; }
+.related-name { font-size: 11px; color: #444; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.related-price { font-size: 13px; color: #ff4d4f; font-weight: bold; }
+
+.action-bar {
+  position: fixed; bottom: 56px; left: 0; right: 0;
+  display: flex; background: #fff; border-top: 1px solid #f0f0f0;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.06); z-index: 100; height: 54px;
+}
+.action-icons { display: flex; flex: 0 0 auto; }
+.action-icon {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 0 14px; cursor: pointer; color: #666; font-size: 10px;
+}
+.action-btns { display: flex; flex: 1; }
+.action-btns .el-button { flex: 1; height: 100%; border-radius: 0; margin: 0; }
 </style>

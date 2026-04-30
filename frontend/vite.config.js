@@ -10,14 +10,27 @@ export default defineConfig({
     }
   },
   server: {
-    host: true, // 监听 0.0.0.0，避免 Windows 上 localhost 只连 IPv6 导致拒绝连接
+    host: true,
     port: 3000,
-    strictPort: false, // 3000 被占用时自动换端口，注意看终端里实际地址
+    strictPort: false,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
+  },
+  build: {
+    chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vue-vendor': ['vue', 'vue-router', 'pinia'],
+          'element-plus': ['element-plus'],
+          'echarts': ['echarts'],
+          'axios': ['axios']
+        }
       }
     }
   }

@@ -3,13 +3,15 @@ package com.supermarket.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.KeySequence;
 import lombok.Data;
 import java.util.Date;
 
 @Data
 @TableName("ADDRESSES")
+@KeySequence("SEQ_ADDRESSES")
 public class Address {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer addressId;
     private Integer userId;
     private String receiverName;  // 数据库字段 RECEIVER_NAME

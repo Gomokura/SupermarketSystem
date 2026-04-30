@@ -11,7 +11,7 @@ import java.util.List;
 @Data
 @TableName("STOCKTAKE_TASKS")
 public class StocktakeTask {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer taskId;
     /** 盘点范围：all全部 / category按分类 */
     private String scope;

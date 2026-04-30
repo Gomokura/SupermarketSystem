@@ -10,7 +10,7 @@ import java.util.Date;
 @Data
 @TableName("DAMAGE_RECORDS")
 public class DamageRecord {
-    @TableId(value = "DAMAGE_ID", type = IdType.AUTO)  // 数据库主键名为 DAMAGE_ID
+    @TableId(value = "DAMAGE_ID", type = IdType.INPUT)  // 数据库主键名为 DAMAGE_ID
     private Integer damageId;
     private Integer productId;
     private Integer quantity;

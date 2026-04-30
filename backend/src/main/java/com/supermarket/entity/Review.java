@@ -10,7 +10,7 @@ import java.util.Date;
 @Data
 @TableName("REVIEWS")
 public class Review {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer reviewId;
     private Integer orderId;
     /** v3: order_item_id（防重复评价） */

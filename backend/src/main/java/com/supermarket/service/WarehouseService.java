@@ -18,6 +18,7 @@ public class WarehouseService extends ServiceImpl<DamageRecordMapper, DamageReco
 
     @Autowired private ProductMapper productMapper;
     @Autowired private InventoryLogMapper inventoryLogMapper;
+    @Autowired private DamageRecordMapper damageRecordMapper;
 
     /** 报损登记 */
     @Transactional
@@ -35,6 +36,7 @@ public class WarehouseService extends ServiceImpl<DamageRecordMapper, DamageReco
         record.setReason(reason);
         record.setOperatorId(operatorId);
         record.setCreateTime(new Date());
+        record.setDamageId(damageRecordMapper.getNextId());
         this.save(record);
 
         InventoryLog log = new InventoryLog();
@@ -44,6 +46,7 @@ public class WarehouseService extends ServiceImpl<DamageRecordMapper, DamageReco
         log.setRemark("报损：" + reason);
         log.setOperatorId(operatorId);
         log.setCreateTime(new Date());
+        log.setLogId(inventoryLogMapper.getNextId());
         inventoryLogMapper.insert(log);
 
         return Result.success(record);
@@ -63,8 +66,11 @@ public class WarehouseService extends ServiceImpl<DamageRecordMapper, DamageReco
     }
 
     /** 库存总览 */
-    public Result<?> inventoryOverview(Integer pageNum, Integer pageSize) {
+    public Result<?> inventoryOverview(Integer pageNum, Integer pageSize, String keyword) {
         LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        if (keyword != null && !keyword.isEmpty()) {
+            wrapper.like(Product::getProductName, keyword);
+        }
         wrapper.orderByAsc(Product::getStock);
         Page<Product> page = productMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         return Result.success(page);

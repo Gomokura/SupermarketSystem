@@ -10,7 +10,7 @@ import java.util.Date;
 @Data
 @TableName("MESSAGES")
 public class Message {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     @TableField("MESSAGE_ID")
     private Integer messageId;
     private Integer userId;

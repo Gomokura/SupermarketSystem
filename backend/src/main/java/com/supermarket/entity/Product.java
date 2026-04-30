@@ -3,6 +3,7 @@ package com.supermarket.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.util.Date;
@@ -11,7 +12,7 @@ import java.util.List;
 @Data
 @TableName("PRODUCTS")
 public class Product {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer productId;
     private String productName;
     private Integer categoryId;
@@ -31,6 +32,7 @@ public class Product {
     private Date createTime;
     private Date updateTime;
     private String barcode;         // 商品条码
+    @TableLogic
     private Integer isDeleted;      // 逻辑删除 0/1，数据库字段 IS_DELETED
     private Double costPrice;       // 成本价，数据库字段 COST_PRICE
 

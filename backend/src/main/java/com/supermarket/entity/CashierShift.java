@@ -9,7 +9,7 @@ import java.util.Date;
 @Data
 @TableName("CASHIER_SHIFTS")
 public class CashierShift {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer shiftId;
     private Integer cashierId;
     private Double startCash;

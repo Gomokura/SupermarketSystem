@@ -21,6 +21,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "/auth/register",
                         "/auth/admin/login",
                         "/auth/courier/login",
+                        "/auth/cashier/member",
+                        "/init/**",
                         "/products/list",
                         "/products/{productId}",
                         "/products/barcode/**",

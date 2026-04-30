@@ -60,8 +60,9 @@ public class AdminController {
     public Result<?> getUserList(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) String keyword) {
-        return adminService.getUserList(pageNum, pageSize, keyword);
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status) {
+        return adminService.getUserList(pageNum, pageSize, keyword, status);
     }
 
     @GetMapping("/users/{userId}")
@@ -165,7 +166,7 @@ public class AdminController {
     public Result<?> updatePromotion(
             @PathVariable Integer promotionId,
             @RequestBody Promotion promotion) {
-        promotion.setPromotionId(promotionId);
+        promotion.setActivityId(promotionId);
         return adminService.updatePromotion(promotion);
     }
 
@@ -209,6 +210,11 @@ public class AdminController {
         return adminService.getPurchaseOrders(pageNum, pageSize, status);
     }
 
+    @GetMapping("/purchase-orders/{poId}")
+    public Result<?> getPurchaseOrderDetail(@PathVariable Integer poId) {
+        return adminService.getPurchaseOrderDetail(poId);
+    }
+
     @PostMapping("/purchase-orders")
     public Result<?> createPurchaseOrder(
             @RequestBody Map<String, Object> body,
@@ -235,6 +241,11 @@ public class AdminController {
         return adminService.receivePurchaseOrder(poId, arrivals, userId);
     }
 
+    @PutMapping("/purchase-orders/{poId}/cancel")
+    public Result<?> cancelPurchaseOrder(@PathVariable Integer poId) {
+        return adminService.cancelPurchaseOrder(poId);
+    }
+
     // ==================== 财务数据 ====================
 
     @GetMapping("/finance")
@@ -248,8 +259,10 @@ public class AdminController {
     public Result<?> getAuditLogs(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) String module) {
-        return adminService.getAuditLogs(pageNum, pageSize, module);
+            @RequestParam(required = false) String module,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        return adminService.getAuditLogs(pageNum, pageSize, module, startDate, endDate);
     }
 
     // ==================== 骑手管理 ====================
@@ -259,6 +272,11 @@ public class AdminController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         return adminService.getCourierList(pageNum, pageSize);
+    }
+
+    @PostMapping("/couriers")
+    public Result<?> createCourier(@RequestBody Courier courier) {
+        return adminService.createCourier(courier);
     }
 
     @PutMapping("/couriers/{courierId}/status")

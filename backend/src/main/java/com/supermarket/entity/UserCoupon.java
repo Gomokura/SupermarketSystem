@@ -12,6 +12,9 @@ import java.util.Date;
 public class UserCoupon {
     @TableId(value = "UC_ID", type = IdType.AUTO)
     private Integer ucId;
+    
+    @TableField(exist = false)
+    private Integer userCouponId;
     private Integer userId;
     private Integer couponId;
     /** 状态：unused未使用 / used已使用 / expired已过期 */

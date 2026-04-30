@@ -10,7 +10,7 @@ import java.util.Date;
 @Data
 @TableName("ORDER_STATUS_LOGS")
 public class OrderStatusLog {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer logId;
     private Integer orderId;
     private String fromStatus;

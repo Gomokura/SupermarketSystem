@@ -24,6 +24,7 @@ import java.util.Map;
 public class CouponService extends ServiceImpl<CouponMapper, Coupon> {
 
     @Autowired private UserCouponMapper userCouponMapper;
+    @Autowired private CouponMapper couponMapper;
 
     /** C端：优惠券中心（可领取） */
     public Result<?> couponCenter(Integer userId) {
@@ -79,6 +80,7 @@ public class CouponService extends ServiceImpl<CouponMapper, Coupon> {
     /** B端：创建优惠券 */
     @Transactional
     public Result<?> createCoupon(Coupon coupon) {
+        coupon.setCouponId(couponMapper.getNextId());
         coupon.setIssuedCount(0);
         coupon.setStatus("active");
         coupon.setCreateTime(new Date());
@@ -133,6 +135,7 @@ public class CouponService extends ServiceImpl<CouponMapper, Coupon> {
         }
 
         UserCoupon uc = new UserCoupon();
+        uc.setUcId(userCouponMapper.getNextId());
         uc.setUserId(userId);
         uc.setCouponId(couponId);
         uc.setStatus("unused");
@@ -180,6 +183,7 @@ public class CouponService extends ServiceImpl<CouponMapper, Coupon> {
             if (coupon == null) continue;
             if (coupon.getEndTime() != null && coupon.getEndTime().before(now)) continue;
             if (coupon.getMinAmount() != null && orderAmount < coupon.getMinAmount()) continue;
+            uc.setUserCouponId(uc.getUcId());
             uc.setCouponName(coupon.getCouponName());
             uc.setCouponType(coupon.getCouponType());
             uc.setMinAmount(coupon.getMinAmount());
@@ -237,6 +241,7 @@ public class CouponService extends ServiceImpl<CouponMapper, Coupon> {
             }
 
             UserCoupon uc = new UserCoupon();
+            uc.setUcId(userCouponMapper.getNextId());
             uc.setUserId(userId);
             uc.setCouponId(couponId);
             uc.setStatus("unused");

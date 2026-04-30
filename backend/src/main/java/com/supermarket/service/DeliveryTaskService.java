@@ -13,10 +13,8 @@ import com.supermarket.mapper.OrderMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.DigestUtils;
 import org.springframework.util.StringUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
@@ -63,10 +61,9 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
         Courier courier = courierMapper.selectById(courierId);
         if (courier == null) throw new BusinessException(404, "配送员不存在");
 
-        String oldMd5 = DigestUtils.md5DigestAsHex(oldPassword.getBytes(StandardCharsets.UTF_8));
-        if (!oldMd5.equals(courier.getPassword())) throw new BusinessException("旧密码错误");
+        if (!oldPassword.equals(courier.getPassword())) throw new BusinessException("旧密码错误");
 
-        courier.setPassword(DigestUtils.md5DigestAsHex(newPassword.getBytes(StandardCharsets.UTF_8)));
+        courier.setPassword(newPassword);
         courierMapper.updateById(courier);
         return Result.success();
     }

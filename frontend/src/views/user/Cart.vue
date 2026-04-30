@@ -1,48 +1,82 @@
 <template>
-  <div class="page-container">
-    <h2>购物车</h2>
-    <el-table :data="cartItems" border style="width: 100%" @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="55" :selectable="canSelect" />
-      <el-table-column label="商品名称" min-width="200">
-        <template #default="{ row }">
-          <div :class="{ 'disabled-text': !canSelect(row) }">
-            {{ row.productName }}
-            <el-tag v-if="row.productStatus !== 1" type="info" size="small" class="ml-2">已下架</el-tag>
-            <el-tag v-else-if="row.stock <= 0" type="danger" size="small" class="ml-2">缺货</el-tag>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="price" label="单价" width="120">
-        <template #default="{ row }">
-          <span :class="{ 'disabled-text': !canSelect(row) }">￥{{ row.price }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="数量" width="180">
-        <template #default="{ row }">
-          <el-input-number v-model="row.quantity" :min="1" :max="row.stock || 1000" size="small" @change="updateQuantity(row)" :disabled="!canSelect(row)" />
-        </template>
-      </el-table-column>
-      <el-table-column label="小计" width="120">
-        <template #default="{ row }">
-          <span class="subtotal">￥{{ row.price != null ? (row.price * row.quantity).toFixed(2) : '价格异常' }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="120">
-        <template #default="{ row }">
-          <el-button type="danger" size="small" @click="removeItem(row.cartId)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+  <div class="cart-wrap">
+    <div v-if="loading" style="text-align:center;padding:60px">
+      <el-icon class="is-loading" :size="32"><Loading /></el-icon>
+    </div>
 
-    <div class="cart-summary">
-      <div class="total-info">
-        <span>共 {{ totalCount }} 件商品</span>
-        <span class="total-price">总计: ￥{{ totalPrice.toFixed(2) }}</span>
+    <el-empty v-else-if="cartItems.length === 0"
+      description="购物车空空如也" :image-size="100" style="padding:60px 0">
+      <el-button type="primary" @click="$router.push('/products')">去选购</el-button>
+    </el-empty>
+
+    <template v-else>
+      <!-- 全选栏 -->
+      <div class="select-all-bar">
+        <el-checkbox v-model="isAllSelected" @change="handleSelectAll">全选</el-checkbox>
+        <el-button type="danger" link size="small" @click="batchDeleteSelected" :disabled="selectedItems.length === 0">
+          删除选中({{ selectedItems.length }})
+        </el-button>
       </div>
-      <div class="actions">
-        <el-button @click="clearCart">清空购物车</el-button>
-        <el-button type="primary" size="large" @click="goCheckout" :disabled="selectedItems.length === 0">去结算</el-button>
+
+      <!-- 商品列表 -->
+      <div class="item-list">
+        <div
+          class="cart-item"
+          v-for="item in cartItems"
+          :key="item.cartId"
+          :class="{ disabled: !canSelect(item) }"
+        >
+          <el-checkbox
+            :model-value="selectedIds.has(item.cartId)"
+            @change="(v) => toggleSelect(item, v)"
+            :disabled="!canSelect(item)"
+          />
+          <img
+            :src="item.coverImage || `https://picsum.photos/seed/p${item.productId}/120/120`"
+            class="item-img"
+            @click="$router.push(`/products/${item.productId}`)"
+            @error="e => e.target.src = `https://picsum.photos/seed/p${item.productId}/120/120`"
+          />
+          <div class="item-body">
+            <div class="item-name" @click="$router.push(`/products/${item.productId}`)">
+              {{ item.productName }}
+              <el-tag v-if="item.skuName" type="info" size="small" style="margin-left:4px">{{ item.skuName }}</el-tag>
+            </div>
+            <div v-if="!canSelect(item)" class="item-warn">
+              {{ item.productStatus !== 'active' ? '商品已下架' : '库存不足' }}
+            </div>
+            <div class="item-foot">
+              <span class="item-price">￥{{ item.price }}</span>
+              <el-input-number
+                v-model="item.quantity"
+                :min="1" :max="item.stock || 999"
+                size="small"
+                :disabled="!canSelect(item)"
+                @change="updateQuantity(item)"
+                style="width:100px"
+              />
+            </div>
+          </div>
+          <el-button link type="danger" @click="removeItem(item.cartId)" class="delete-btn">
+            <el-icon><Delete /></el-icon>
+          </el-button>
+        </div>
       </div>
+    </template>
+
+    <!-- 底部结算栏 -->
+    <div class="checkout-bar" v-if="cartItems.length > 0">
+      <div class="bar-info">
+        <span>已选 <strong>{{ totalCount }}</strong> 件</span>
+        <span class="bar-total">合计: <strong class="bar-price">￥{{ totalPrice.toFixed(2) }}</strong></span>
+      </div>
+      <el-button
+        type="primary"
+        size="large"
+        :disabled="selectedItems.length === 0"
+        @click="goCheckout"
+        style="border-radius:20px;min-width:100px"
+      >去结算</el-button>
     </div>
   </div>
 </template>
@@ -51,116 +85,119 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Loading, Delete } from '@element-plus/icons-vue'
 import { cartAPI } from '@/api'
 
 const router = useRouter()
 const cartItems = ref([])
-const selectedItems = ref([])
+const loading = ref(false)
+const selectedIds = ref(new Set())
 
-const totalCount = computed(() => selectedItems.value.reduce((sum, item) => sum + item.quantity, 0))
-const totalPrice = computed(() => selectedItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
-
-onMounted(() => {
-  loadCart()
+const selectedItems = computed(() => cartItems.value.filter(i => selectedIds.value.has(i.cartId)))
+const isAllSelected = computed({
+  get: () => {
+    const selectable = cartItems.value.filter(canSelect)
+    return selectable.length > 0 && selectable.every(i => selectedIds.value.has(i.cartId))
+  },
+  set: () => {}
 })
 
+const totalCount = computed(() => selectedItems.value.reduce((s, i) => s + i.quantity, 0))
+const totalPrice = computed(() => selectedItems.value.reduce((s, i) => s + Math.round(Number(i.price) * 100) * i.quantity, 0) / 100)
+
+onMounted(loadCart)
+
 const loadCart = async () => {
+  loading.value = true
   try {
     const res = await cartAPI.getList()
     cartItems.value = res.data || []
-  } catch (error) {
-    console.error(error)
-  }
+    // 默认选中可购买项
+    selectedIds.value = new Set(cartItems.value.filter(canSelect).map(i => i.cartId))
+  } catch (e) { console.error(e) }
+  finally { loading.value = false }
+}
+
+const canSelect = (row) => row.productStatus === 'active' && row.stock > 0
+
+const toggleSelect = (item, v) => {
+  const s = new Set(selectedIds.value)
+  if (v) s.add(item.cartId)
+  else s.delete(item.cartId)
+  selectedIds.value = s
+}
+
+const handleSelectAll = (v) => {
+  if (v) selectedIds.value = new Set(cartItems.value.filter(canSelect).map(i => i.cartId))
+  else selectedIds.value = new Set()
 }
 
 const updateQuantity = async (item) => {
   try {
     await cartAPI.updateQuantity(item.cartId, item.quantity)
-  } catch (error) {
-    console.error(error)
-    loadCart()
-  }
-}
-
-const canSelect = (row) => {
-  // 根据业务逻辑判断，若有具体状态字段请替换
-  return row.productStatus === 1 && row.stock > 0
-}
-
-const handleSelectionChange = (val) => {
-  selectedItems.value = val
+  } catch (e) { console.error(e); loadCart() }
 }
 
 const removeItem = async (cartId) => {
   try {
-    await ElMessageBox.confirm('确定要删除这个商品吗？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm('确定删除该商品？', { type: 'warning' })
     await cartAPI.remove(cartId)
-    ElMessage.success('删除成功')
+    ElMessage.success('已删除')
     loadCart()
-  } catch (error) {
-    if (error !== 'cancel') console.error(error)
-  }
+  } catch (e) { if (e !== 'cancel') console.error(e) }
 }
 
-const clearCart = async () => {
+const batchDeleteSelected = async () => {
+  if (selectedItems.value.length === 0) return
   try {
-    await ElMessageBox.confirm('确定要清空购物车吗？', '提示', { type: 'warning' })
-    await cartAPI.clear()
-    ElMessage.success('清空成功')
+    await ElMessageBox.confirm(`确定删除选中的 ${selectedItems.value.length} 件？`, { type: 'warning' })
+    await cartAPI.batchDelete(selectedItems.value.map(i => i.cartId))
+    ElMessage.success('删除成功')
     loadCart()
-  } catch (error) {
-    if (error !== 'cancel') console.error(error)
-  }
+  } catch (e) { if (e !== 'cancel') console.error(e) }
 }
 
 const goCheckout = () => {
-  if (selectedItems.value.length === 0) {
-    ElMessage.warning('请选择商品')
-    return
-  }
-  const ids = selectedItems.value.map(item => item.cartId).join(',')
-  router.push(`/checkout?cartIds=${ids}`)
+  if (selectedItems.value.length === 0) { ElMessage.warning('请选择商品'); return }
+  router.push(`/checkout?cartIds=${selectedItems.value.map(i => i.cartId).join(',')}`)
 }
 </script>
 
 <style scoped>
-.cart-summary {
-  margin-top: 20px;
-  padding: 20px;
-  background: #f5f5f5;
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.cart-wrap { background: #f5f5f5; min-height: 100%; padding-bottom: 72px; }
+
+.select-all-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #fff; padding: 10px 14px; border-bottom: 1px solid #f0f0f0; position: sticky; top: 0; z-index: 1;
 }
 
-.total-info {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
+.item-list { padding: 10px; display: flex; flex-direction: column; gap: 10px; }
 
-.total-price {
-  font-size: 24px;
-  color: #f56c6c;
-  font-weight: bold;
+.cart-item {
+  background: #fff; border-radius: 10px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px; position: relative;
 }
+.cart-item.disabled { opacity: 0.5; }
 
-.actions {
-  display: flex;
-  gap: 10px;
-}
+.item-img { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; cursor: pointer; flex-shrink: 0; }
 
-.subtotal {
-  color: #f56c6c;
-  font-weight: bold;
-}
+.item-body { flex: 1; min-width: 0; }
+.item-name { font-size: 13px; color: #333; margin-bottom: 4px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-warn { font-size: 11px; color: #ff4d4f; margin-bottom: 4px; }
+.item-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+.item-price { color: #ff4d4f; font-weight: bold; font-size: 16px; }
 
-.disabled-text {
-  color: #c0c4cc;
-}
+.delete-btn { flex-shrink: 0; padding: 4px; }
 
-.ml-2 {
-  margin-left: 8px;
+.checkout-bar {
+  position: fixed; bottom: 56px; left: 0; right: 0;
+  background: #fff; border-top: 1px solid #f0f0f0;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; z-index: 100;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
 }
+.bar-info { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: #666; }
+.bar-price { color: #ff4d4f; font-size: 18px; }
 </style>

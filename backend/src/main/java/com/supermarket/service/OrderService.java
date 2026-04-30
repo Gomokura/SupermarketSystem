@@ -61,7 +61,18 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         LambdaQueryWrapper<OrderItem> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(OrderItem::getOrderId, orderId);
         order.setItems(orderItemMapper.selectList(wrapper));
-        // 配送信息：如果存在配送任务则回填取件/送达时间（用于时间线/进度展示）
+        
+        if (order.getReceiverSnapshot() != null && !order.getReceiverSnapshot().isEmpty()) {
+            String[] parts = order.getReceiverSnapshot().split(" ");
+            if (parts.length >= 2) {
+                order.setReceiverName(parts[0]);
+                order.setReceiverPhone(parts[1]);
+                if (parts.length >= 3) {
+                    order.setReceiverAddress(parts[2]);
+                }
+            }
+        }
+        
         DeliveryTask task = deliveryTaskMapper.selectOne(new LambdaQueryWrapper<DeliveryTask>()
                 .eq(DeliveryTask::getOrderId, orderId));
         if (task != null) {
@@ -196,12 +207,14 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         order.setFreightAmount(0.0);
         order.setDiscountAmount(round2(calc.couponDiscount + calc.pointsDeductAmount));
         order.setPayAmount(round2(totalAmount - calc.couponDiscount - calc.pointsDeductAmount));
-        order.setPayMethod(paymentMethod != null ? paymentMethod : "MOCK");
+        String payMethod = paymentMethod != null ? paymentMethod.toUpperCase() : "ALIPAY";
+        order.setPayMethod(payMethod);
         order.setRemark(remark);
         order.setDeliveryTimeSlot(deliveryTimeSlot);
         order.setStatus("PENDING_PAY");
         order.setCreateTime(new Date());
         order.setUpdateTime(new Date());
+        order.setOrderId(orderMapper.getNextId());
         orderMapper.insert(order);
         writeStatusLog(order.getOrderId(), null, "PENDING_PAY", "USER", userId, null, "订单创建");
 
@@ -227,6 +240,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
             orderItem.setSubtotal(unitPrice * item.getQuantity());
             orderItem.setSkuId(item.getSkuId());
             orderItem.setSkuName(skuName);
+            orderItem.setItemId(orderItemMapper.getNextId());
             orderItemMapper.insert(orderItem);
 
             // ✅ 扣库存
@@ -321,12 +335,15 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         return Result.success("订单已取消");
     }
 
-    /** 确认收货（shipped→completed） */
+    /** 确认收货（shipped/pending_received→completed） */
     public Result<?> confirmReceipt(Integer orderId, Integer userId) {
         Order order = this.getById(orderId);
         if (order == null) return Result.error("订单不存在");
         if (!order.getUserId().equals(userId)) return Result.error("无权操作");
-        if (!"PENDING_RECEIVED".equals(order.getStatus())) return Result.error("当前订单不在待收货状态");
+        String status = order.getStatus();
+        if (!"SHIPPING".equals(status) && !"PENDING_RECEIVED".equals(status)) {
+            return Result.error("当前订单状态不允许确认收货");
+        }
         String from = order.getStatus();
         order.setStatus("COMPLETED");
         order.setConfirmTime(new Date());
@@ -383,14 +400,15 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
                 .eq(DeliveryTask::getOrderId, orderId));
         if (task == null) {
             task = new DeliveryTask();
+            task.setTaskId(deliveryTaskMapper.getNextId());
             task.setOrderId(orderId);
             task.setCourierId(courierId);
-            task.setStatus("pending");
+            task.setStatus("ASSIGNED");
             task.setAssignTime(new Date());
             deliveryTaskMapper.insert(task);
         } else {
             task.setCourierId(courierId);
-            task.setStatus("pending");
+            task.setStatus("ASSIGNED");
             task.setAssignTime(new Date());
             deliveryTaskMapper.updateById(task);
         }
@@ -490,6 +508,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         order.setPayTime(new Date());
         order.setCompleteTime(new Date());
         order.setUpdateTime(new Date());
+        order.setOrderId(orderMapper.getNextId());
         orderMapper.insert(order);
         writeStatusLog(order.getOrderId(), null, "COMPLETED", "ADMIN", cashierId, null, "收银台完成交易");
 
@@ -508,6 +527,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
             orderItem.setSubtotal(unitPrice * item.getQuantity());
             orderItem.setSkuId(item.getSkuId());
             orderItem.setSpecName(sku != null ? sku.getSkuName() : null);
+            orderItem.setItemId(orderItemMapper.getNextId());
             orderItemMapper.insert(orderItem);
 
             if (sku != null) {
@@ -628,6 +648,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
                 log.setRefId(order.getOrderId());
                 log.setOperatorId(null);
                 log.setCreateTime(new Date());
+                log.setLogId(pointsLogMapper.getNextId());
                 pointsLogMapper.insert(log);
             }
         }
@@ -671,6 +692,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         log.setRefId(orderId);
         log.setOperatorId(null);
         log.setCreateTime(new Date());
+        log.setLogId(pointsLogMapper.getNextId());
         pointsLogMapper.insert(log);
     }
 
@@ -807,6 +829,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         log.setOperatorName(operatorName);
         log.setRemark(remark);
         log.setCreateTime(new Date());
+        log.setLogId(orderStatusLogMapper.getNextId());
         orderStatusLogMapper.insert(log);
     }
 
@@ -830,6 +853,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         log.setRemark(remark);
         log.setOperatorId(operatorId);
         log.setCreateTime(new Date());
+        log.setLogId(inventoryLogMapper.getNextId());
         inventoryLogMapper.insert(log);
     }
 

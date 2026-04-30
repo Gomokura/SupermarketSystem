@@ -33,7 +33,7 @@ public class PromotionService extends ServiceImpl<PromotionMapper, Promotion> {
     @Transactional
     public Result<?> update(Integer promotionId, Promotion promotion) {
         if (this.getById(promotionId) == null) return Result.error("活动不存在");
-        promotion.setPromotionId(promotionId);
+        promotion.setActivityId(promotionId);
         this.updateById(promotion);
         return Result.success(promotion);
     }

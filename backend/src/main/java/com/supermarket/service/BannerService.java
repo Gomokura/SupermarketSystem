@@ -6,6 +6,7 @@ import com.supermarket.common.BusinessException;
 import com.supermarket.common.Result;
 import com.supermarket.entity.Banner;
 import com.supermarket.mapper.BannerMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,8 @@ import java.util.List;
 
 @Service
 public class BannerService extends ServiceImpl<BannerMapper, Banner> {
+
+    @Autowired private BannerMapper bannerMapper;
 
     /** C端：查询当前有效的轮播图（status=active） */
     public Result<?> getActiveBanners() {
@@ -40,6 +43,7 @@ public class BannerService extends ServiceImpl<BannerMapper, Banner> {
         if (banner.getStatus() == null) banner.setStatus("active");
         if (banner.getSortOrder() == null) banner.setSortOrder(99);
         banner.setCreateTime(new Date());
+        banner.setBannerId(bannerMapper.getNextId());
         this.save(banner);
         return Result.success();
     }

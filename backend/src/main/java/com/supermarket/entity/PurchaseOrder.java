@@ -11,7 +11,7 @@ import java.util.List;
 @Data
 @TableName("PURCHASE_ORDERS")
 public class PurchaseOrder {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer poId;
     private Integer supplierId;
     private Integer operatorId;   // 创建人（管理员ID）

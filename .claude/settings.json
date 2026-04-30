@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"D:/OracleXE213_Win64/21c/dbhomeXE/bin/sqlplus.exe\" -S system/123456@//localhost:1521/XE @\"d:/桌面/SupermarketSystem/database/all_tables.sql\")",
+      "Bash(\"D:/OracleXE213_Win64/21c/dbhomeXE/bin/sqlplus.exe\" -S system/123456@//localhost:1521/XE)",
+      "Bash(sqlplus -S system/123456@//localhost:1521/XE @\"database/all_tables_ascii.sql\")",
+      "Bash(curl -s http://localhost:8080/api/products/list?pageNum=1\\\\&pageSize=5)",
+      "Bash(curl -s http://localhost:8080/api/banners/list)",
+      "Bash(curl -s -X POST http://localhost:8080/api/auth/admin/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"admin123\"}')",
+      "Bash(curl -s -X POST http://localhost:8080/api/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"13800138001\",\"password\":\"123456\"}')",
+      "Bash(curl -v -X POST http://localhost:8080/api/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"13800138001\",\"password\":\"123456\"}')",
+      "Bash(curl -s -X POST http://localhost:8080/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"13800138001\",\"password\":\"123456\"}')",
+      "Bash(mvn clean *)",
+      "Bash(taskkill /F /IM java.exe)",
+      "Bash(cmd /c \"taskkill /F /IM java.exe\")",
+      "Bash(cmd /c \"taskkill /F /IM java.exe 2>&1\")",
+      "Bash(powershell -Command \"Get-Process java -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host 'done'\")",
+      "Bash(curl -s -X POST http://localhost:8080/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"username\\\\\":\\\\\"13800138001\\\\\",\\\\\"password\\\\\":\\\\\"123456\\\\\"}\")",
+      "Bash(powershell -Command \"Get-Process java -ErrorAction SilentlyContinue | Select-Object Id,CPU,StartTime\")",
+      "Bash(powershell -Command \"Get-Content 'd:/桌面/SupermarketSystem/backend/backend.log' -Tail 30\")",
+      "Bash(powershell -Command \"Get-Content 'd:/桌面/SupermarketSystem/backend/backend.log' -Tail 30 -ErrorAction SilentlyContinue\")",
+      "Bash(powershell -Command \"Start-Process java -ArgumentList '-jar','d:/桌面/SupermarketSystem/backend/target/supermarket-backend-1.0.0.jar' -RedirectStandardOutput 'd:/桌面/SupermarketSystem/backend/backend.log' -RedirectStandardError 'd:/桌面/SupermarketSystem/backend/backend-err.log' -WorkingDirectory 'd:/桌面/SupermarketSystem/backend'\")",
+      "Bash(curl -s -X POST http://localhost:8080/auth/admin/login -H \"Content-Type: application/json\" -d \"{\\\\\"username\\\\\":\\\\\"admin\\\\\",\\\\\"password\\\\\":\\\\\"admin123\\\\\"}\")",
+      "Bash(curl -s -X POST http://localhost:8080/auth/courier/login -H \"Content-Type: application/json\" -d \"{\\\\\"username\\\\\":\\\\\"13900000001\\\\\",\\\\\"password\\\\\":\\\\\"123456\\\\\"}\")",
+      "Bash(git add *)",
+      "Bash(netstat -ano)",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | Select-Object -First 1\")",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 8080,5173,3000 -ErrorAction SilentlyContinue | Select-Object LocalPort, OwningProcess\")",
+      "Bash(powershell -Command \"Start-Process java -ArgumentList '-jar','d:/桌面/SupermarketSystem/backend/target/supermarket-backend-1.0.0.jar' -WindowStyle Normal\")",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue | Select-Object LocalPort, State, OwningProcess\")",
+      "Bash(sqlplus -S supermarket/supermarket123@localhost:1521/XE)",
+      "Bash(sqlplus -S system/123456@127.0.0.1:1521:XE)",
+      "Bash(powershell -Command ' *)",
+      "Bash(mvn package *)"
+    ]
+  }
+}

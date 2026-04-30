@@ -68,6 +68,37 @@ public class ProductController {
     }
 
     /**
+     * 热销商品排行
+     * GET /products/top-sales?limit=10
+     */
+    @GetMapping("/top-sales")
+    public Result<?> getTopSalesProducts(
+            @RequestParam(defaultValue = "10") Integer limit) {
+        return productService.getTopSalesProducts(limit);
+    }
+
+    /**
+     * 新品上市
+     * GET /products/new?limit=10
+     */
+    @GetMapping("/new")
+    public Result<?> getNewProducts(
+            @RequestParam(defaultValue = "10") Integer limit) {
+        return productService.getNewProducts(limit);
+    }
+
+    /**
+     * 搜索联想词
+     * GET /products/suggestions?keyword=xx&limit=10
+     */
+    @GetMapping("/suggestions")
+    public Result<?> getSearchSuggestions(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "10") Integer limit) {
+        return productService.getSearchSuggestions(keyword, limit);
+    }
+
+    /**
      * 分类树（C端导航用）
      * GET /categories/tree
      */
@@ -154,14 +185,15 @@ public class ProductController {
 
     /**
      * 上下架商品
-     * PUT /products/{productId}/status
-     * body: { "status": "active" | "off_shelf" }
+     * PUT /products/{productId}/status?status=active|off_shelf
      */
     @PutMapping("/{productId}/status")
     public Result<?> updateProductStatus(
             @PathVariable Integer productId,
-            @RequestBody Map<String, String> body) {
-        return productService.updateProductStatus(productId, body.get("status"));
+            @RequestParam(required = false) String status,
+            @RequestBody(required = false) Map<String, String> body) {
+        String s = status != null ? status : (body != null ? body.get("status") : null);
+        return productService.updateProductStatus(productId, s);
     }
 
     /**
@@ -244,15 +276,14 @@ public class ProductController {
     }
 
     /**
-     * 新增/修改SKU
+     * 批量保存SKU（新增或更新）
      * POST /products/{productId}/skus
      */
     @PostMapping("/{productId}/skus")
-    public Result<?> saveProductSku(
+    public Result<?> saveProductSkus(
             @PathVariable Integer productId,
-            @RequestBody ProductSku sku) {
-        sku.setProductId(productId);
-        return productService.saveProductSku(sku);
+            @RequestBody List<ProductSku> skus) {
+        return productService.saveProductSkus(productId, skus);
     }
 
     /**

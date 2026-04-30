@@ -16,11 +16,12 @@ import java.util.List;
 public class BrandService extends ServiceImpl<BrandMapper, Brand> {
 
     @Autowired private ProductMapper productMapper;
+    @Autowired private BrandMapper brandMapper;
 
     public Result<?> listAll(String status) {
         LambdaQueryWrapper<Brand> wrapper = new LambdaQueryWrapper<>();
         if (status != null && !status.isEmpty()) wrapper.eq(Brand::getStatus, status);
-        wrapper.orderByAsc(Brand::getSortOrder);
+        wrapper.orderByAsc(Brand::getBrandId);
         List<Brand> brands = this.list(wrapper);
         for (Brand b : brands) {
             LambdaQueryWrapper<Product> pw = new LambdaQueryWrapper<>();
@@ -32,7 +33,7 @@ public class BrandService extends ServiceImpl<BrandMapper, Brand> {
 
     public Result<?> create(Brand brand) {
         if (brand.getStatus() == null) brand.setStatus("active");
-        if (brand.getSortOrder() == null) brand.setSortOrder(0);
+        brand.setBrandId(brandMapper.getNextId());
         this.save(brand);
         return Result.success(brand);
     }

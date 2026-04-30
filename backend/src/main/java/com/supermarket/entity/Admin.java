@@ -11,7 +11,7 @@ import java.util.Date;
 @Data
 @TableName("ADMIN_USERS")
 public class Admin {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer adminId;
     private String username;
     @JsonIgnore
@@ -21,7 +21,7 @@ public class Admin {
     private String role;
     private String phone;
     private String status;        // active / inactive
-    @TableField("LAST_LOGIN")
+    @TableField(exist = false)
     private Date lastLogin;
     private Date createTime;
 }

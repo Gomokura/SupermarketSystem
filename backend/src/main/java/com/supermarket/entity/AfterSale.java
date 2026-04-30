@@ -10,7 +10,7 @@ import java.util.Date;
 @Data
 @TableName("AFTER_SALES")
 public class AfterSale {
-    @TableId(value = "AS_ID", type = IdType.AUTO)
+    @TableId(value = "AS_ID", type = IdType.INPUT)
     private Integer afterSaleId;
     /** 售后单号 */
     private String asNo;

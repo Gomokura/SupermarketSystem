@@ -13,7 +13,7 @@
       <el-radio-group v-model="selectedAddressId" v-if="addresses.length">
         <el-radio v-for="addr in addresses" :key="addr.addressId" :value="addr.addressId" class="address-item">
           <div class="address-info">
-            <span class="addr-name">{{ addr.receiver }}</span>
+            <span class="addr-name">{{ addr.receiverName }}</span>
             <span class="addr-phone">{{ addr.phone }}</span>
             <span class="addr-detail">{{ addr.province }}{{ addr.city }}{{ addr.district }}{{ addr.detail }}</span>
             <el-tag v-if="addr.isDefault === 1" size="small" type="success">默认</el-tag>
@@ -37,7 +37,7 @@
         <el-table-column prop="quantity" label="数量" width="80" />
         <el-table-column label="小计" width="110">
           <template #default="{ row }">
-            <span class="subtotal">￥{{ (row.price * row.quantity).toFixed(2) }}</span>
+            <span class="subtotal">￥{{ toYuan(toCents(row.price) * row.quantity) }}</span>
           </template>
         </el-table-column>
       </el-table>
@@ -122,16 +122,35 @@
     </div>
 
     <!-- 添加地址弹窗 -->
-    <el-dialog v-model="showAddressDialog" title="添加收货地址" width="500px">
-      <el-form :model="addressForm" :rules="addressRules" ref="addressFormRef" label-width="80px">
-        <el-form-item label="收货人" prop="receiver">
-          <el-input v-model="addressForm.receiver" />
+    <el-dialog v-model="showAddressDialog" title="添加收货地址" width="560px">
+      <el-form :model="addressForm" :rules="addressRules" ref="addressFormRef" label-width="90px">
+        <el-form-item label="收货人" prop="receiverName">
+          <el-input v-model="addressForm.receiverName" placeholder="请输入收货人" />
         </el-form-item>
         <el-form-item label="手机号" prop="phone">
-          <el-input v-model="addressForm.phone" />
+          <el-input v-model="addressForm.phone" placeholder="请输入手机号" maxlength="11" />
+        </el-form-item>
+        <el-form-item label="所在地区" required>
+          <el-row :gutter="10">
+            <el-col :span="8">
+              <el-select v-model="addressForm.province" placeholder="省" @change="onProvinceChange" style="width: 100%">
+                <el-option v-for="p in provinceList" :key="p" :label="p" :value="p" />
+              </el-select>
+            </el-col>
+            <el-col :span="8">
+              <el-select v-model="addressForm.city" placeholder="市" @change="onCityChange" :disabled="!addressForm.province" style="width: 100%">
+                <el-option v-for="c in cityList" :key="c" :label="c" :value="c" />
+              </el-select>
+            </el-col>
+            <el-col :span="8">
+              <el-select v-model="addressForm.district" placeholder="区/县" :disabled="!addressForm.city" style="width: 100%">
+                <el-option v-for="d in districtList" :key="d" :label="d" :value="d" />
+              </el-select>
+            </el-col>
+          </el-row>
         </el-form-item>
         <el-form-item label="详细地址" prop="detail">
-          <el-input v-model="addressForm.detail" type="textarea" :rows="2" />
+          <el-input v-model="addressForm.detail" type="textarea" :rows="2" placeholder="请输入详细地址（街道、门牌号等）" />
         </el-form-item>
         <el-form-item label="设为默认">
           <el-switch v-model="addressForm.isDefault" :active-value="1" :inactive-value="0" />
@@ -169,16 +188,60 @@ const showAddressDialog = ref(false)
 const submitting = ref(false)
 const addressFormRef = ref()
 
-const addressForm = reactive({ receiver: '', phone: '', detail: '', isDefault: 0 })
+const addressForm = reactive({ receiverName: '', phone: '', province: '', city: '', district: '', detail: '', isDefault: 0 })
 const addressRules = {
-  receiver: [{ required: true, message: '请输入收货人', trigger: 'blur' }],
+  receiverName: [{ required: true, message: '请输入收货人', trigger: 'blur' }],
   phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
+  province: [{ required: true, message: '请选择省份', trigger: 'change' }],
+  city: [{ required: true, message: '请选择城市', trigger: 'change' }],
+  district: [{ required: true, message: '请选择区/县', trigger: 'change' }],
   detail: [{ required: true, message: '请输入详细地址', trigger: 'blur' }]
 }
 
+const regionData = {
+  '吉林省': {
+    '长春市': ['南关区', '宽城区', '朝阳区', '二道区', '绿园区', '双阳区', '九台区', '农安县', '德惠市', '榆树市'],
+    '吉林市': ['昌邑区', '龙潭区', '船营区', '丰满区', '永吉县', '蛟河市', '桦甸市', '舒兰市', '磐石市']
+  }
+}
+
+const provinceList = Object.keys(regionData).sort()
+const cityList = ref([])
+const districtList = ref([])
+
+const onProvinceChange = () => {
+  addressForm.city = ''
+  addressForm.district = ''
+  districtList.value = []
+  if (addressForm.province) {
+    cityList.value = Object.keys(regionData[addressForm.province] || {}).sort()
+  } else {
+    cityList.value = []
+  }
+}
+
+const onCityChange = () => {
+  addressForm.district = ''
+  if (addressForm.province && addressForm.city) {
+    districtList.value = regionData[addressForm.province]?.[addressForm.city] || []
+  } else {
+    districtList.value = []
+  }
+}
+
+const toCents = (price) => Math.round(Number(price) * 100)
+const toYuan = (cents) => (Number(cents) / 100).toFixed(2)
+
 const userPoints = computed(() => userStore.userInfo?.points || 0)
-const productTotal = computed(() => cartItems.value.reduce((s, i) => s + i.price * i.quantity, 0))
-const maxPointsDeduction = computed(() => Math.min(userPoints.value / 100, productTotal.value * 0.3))
+const productTotal = computed(() => {
+  const totalCents = cartItems.value.reduce((s, i) => s + toCents(i.price) * i.quantity, 0)
+  return totalCents / 100
+})
+const maxPointsDeduction = computed(() => {
+  const maxByPoints = userPoints.value
+  const maxByTotal = Math.round(productTotal.value * 0.3 * 100)
+  return Math.min(maxByPoints, maxByTotal) / 100
+})
 const pointsDeduction = computed(() => usePoints.value ? maxPointsDeduction.value : 0)
 
 const couponDiscount = computed(() => {
@@ -186,11 +249,17 @@ const couponDiscount = computed(() => {
   const c = availableCoupons.value.find(x => x.userCouponId === selectedCouponId.value)
   if (!c) return 0
   if (c.couponType === 'full_reduction') return c.discountValue
-  if (c.couponType === 'discount') return productTotal.value * (1 - c.discountValue / 10)
+  if (c.couponType === 'discount') {
+    const discountCents = Math.round(productTotal.value * (1 - c.discountValue / 10) * 100)
+    return discountCents / 100
+  }
   return 0
 })
 
-const actualAmount = computed(() => Math.max(0, productTotal.value - couponDiscount.value - pointsDeduction.value))
+const actualAmount = computed(() => {
+  const totalCents = toCents(productTotal.value) - toCents(couponDiscount.value) - toCents(pointsDeduction.value)
+  return Math.max(0, totalCents / 100)
+})
 
 onMounted(() => {
   loadCart()
@@ -201,6 +270,7 @@ const loadCart = async () => {
   try {
     const res = await cartAPI.getList()
     cartItems.value = (res.data || []).filter(i => i.selected !== false)
+    await loadCoupons()
   } catch (e) { console.error(e) }
 }
 
@@ -213,11 +283,49 @@ const loadAddresses = async () => {
   } catch (e) { console.error(e) }
 }
 
+const loadCoupons = async () => {
+  if (productTotal.value <= 0) return
+  try {
+    const res = await couponAPI.getAvailable(productTotal.value)
+    availableCoupons.value = res.data || []
+    selectBestCoupon()
+  } catch (e) { console.error(e) }
+}
+
+const selectBestCoupon = () => {
+  if (availableCoupons.value.length === 0) {
+    selectedCouponId.value = null
+    return
+  }
+  
+  let bestCoupon = null
+  let maxDiscount = 0
+  
+  for (const c of availableCoupons.value) {
+    let discount = 0
+    if (c.couponType === 'full_reduction') {
+      discount = c.discountValue
+    } else if (c.couponType === 'discount') {
+      discount = productTotal.value * (1 - c.discountValue / 10)
+    }
+    
+    if (discount > maxDiscount) {
+      maxDiscount = discount
+      bestCoupon = c
+    }
+  }
+  
+  if (bestCoupon && maxDiscount > 0) {
+    selectedCouponId.value = bestCoupon.userCouponId
+  }
+}
+
 const calcPrice = async () => {
   if (productTotal.value <= 0) return
   try {
     const res = await couponAPI.getAvailable(productTotal.value)
     availableCoupons.value = res.data || []
+    selectBestCoupon()
   } catch (e) { console.error(e) }
 }
 
@@ -238,31 +346,37 @@ const addAddress = async () => {
 }
 
 const submitOrder = async () => {
-  if (!selectedAddressId.value) { ElMessage.warning('请选择收货地址'); return }
-  if (cartItems.value.length === 0) { ElMessage.warning('购物车为空'); return }
+    if (!selectedAddressId.value) { ElMessage.warning('请选择收货地址'); return }
+    if (cartItems.value.length === 0) { ElMessage.warning('购物车为空'); return }
 
-  submitting.value = true
-  try {
-    const deliveryTimeStr = `${deliveryDate.value === 'today' ? '今日' : '明日'} ${
-      { morning: '上午9-12点', afternoon: '下午14-18点', evening: '晚上19-21点' }[deliveryTime.value]
-    }`
-    await orderAPI.create({
-      addressId: selectedAddressId.value,
-      paymentMethod: paymentMethod.value,
-      userCouponId: selectedCouponId.value || undefined,
-      usePoints: usePoints.value,
-      remark: remark.value || undefined,
-      expectedDeliveryTime: deliveryTimeStr,
-      items: cartItems.value.map(i => ({ productId: i.productId, skuId: i.skuId, quantity: i.quantity }))
-    })
-    ElMessage.success('订单提交成功')
-    router.push('/orders')
-  } catch (e) {
-    console.error(e)
-  } finally {
-    submitting.value = false
+    submitting.value = true
+    try {
+      const deliveryTimeStr = `${deliveryDate.value === 'today' ? '今日' : '明日'} ${
+        { morning: '上午9-12点', afternoon: '下午14-18点', evening: '晚上19-21点' }[deliveryTime.value]
+      }`
+      const orderData = {
+        addressId: selectedAddressId.value,
+        paymentMethod: paymentMethod.value,
+        couponId: selectedCouponId.value || undefined,
+        remark: remark.value || undefined,
+        deliveryTimeSlot: deliveryTimeStr,
+        items: cartItems.value.map(i => ({ productId: i.productId, skuId: i.skuId, quantity: i.quantity }))
+      }
+      if (usePoints.value) {
+        orderData.pointsUsed = Math.floor(maxPointsDeduction.value * 100)
+      }
+      await orderAPI.create(orderData)
+      
+      await cartAPI.clear()
+      
+      ElMessage.success('订单提交成功')
+      router.push('/orders')
+    } catch (e) {
+      console.error(e)
+    } finally {
+      submitting.value = false
+    }
   }
-}
 </script>
 
 <style scoped>

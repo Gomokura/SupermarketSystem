@@ -3,6 +3,7 @@ package com.supermarket.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.supermarket.common.BusinessException;
+import com.supermarket.common.PasswordEncoder;
 import com.supermarket.common.Result;
 import com.supermarket.entity.*;
 import com.supermarket.mapper.*;
@@ -10,10 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.util.DigestUtils;
 
 import java.text.SimpleDateFormat;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
@@ -39,6 +38,7 @@ public class AdminService {
     @Autowired private DeliveryTaskMapper deliveryTaskMapper;
     @Autowired private OrderStatusLogMapper orderStatusLogMapper;
     @Autowired private MessageMapper messageMapper;
+    @Autowired private PasswordEncoder passwordEncoder;
 
     // ==================== 管理员管理（B-02~B-05） ====================
 
@@ -65,9 +65,10 @@ public class AdminService {
         if (adminMapper.selectCount(new LambdaQueryWrapper<Admin>().eq(Admin::getUsername, admin.getUsername())) > 0) {
             throw new BusinessException("用户名已存在");
         }
-        admin.setPassword(DigestUtils.md5DigestAsHex(admin.getPassword().getBytes(StandardCharsets.UTF_8)));
+        admin.setPassword(passwordEncoder.encode(admin.getPassword()));
         if (admin.getStatus() == null) admin.setStatus("active");
         admin.setCreateTime(new Date());
+        admin.setAdminId(adminMapper.getNextId());
         adminMapper.insert(admin);
         admin.setPassword(null);
         return Result.success(admin);
@@ -91,20 +92,23 @@ public class AdminService {
         if (!StringUtils.hasText(newPassword) || newPassword.length() < 6) throw new BusinessException("新密码至少6位");
         Admin a = adminMapper.selectById(adminId);
         if (a == null) throw new BusinessException(404, "管理员不存在");
-        a.setPassword(DigestUtils.md5DigestAsHex(newPassword.getBytes(StandardCharsets.UTF_8)));
+        a.setPassword(passwordEncoder.encode(newPassword));
         adminMapper.updateById(a);
         return Result.success();
     }
 
     // ==================== 用户管理 ====================
 
-    public Result<?> getUserList(Integer pageNum, Integer pageSize, String keyword) {
+    public Result<?> getUserList(Integer pageNum, Integer pageSize, String keyword, String status) {
         Page<User> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(keyword)) {
             wrapper.like(User::getUsername, keyword)
                    .or().like(User::getPhone, keyword)
                    .or().like(User::getNickname, keyword);
+        }
+        if (StringUtils.hasText(status)) {
+            wrapper.eq(User::getStatus, status);
         }
         wrapper.orderByDesc(User::getCreateTime);
         userMapper.selectPage(page, wrapper);
@@ -224,6 +228,34 @@ public class AdminService {
         return Result.success(page);
     }
 
+    public Result<?> getPurchaseOrderDetail(Integer poId) {
+        PurchaseOrder po = purchaseOrderMapper.selectById(poId);
+        if (po == null) throw new BusinessException(404, "purchase order not found");
+        if (po.getSupplierId() != null) {
+            Supplier supplier = supplierMapper.selectById(po.getSupplierId());
+            if (supplier != null) po.setSupplierName(supplier.getSupplierName());
+        }
+        LambdaQueryWrapper<PurchaseOrderItem> itemWrapper = new LambdaQueryWrapper<>();
+        itemWrapper.eq(PurchaseOrderItem::getPoId, po.getPoId());
+        List<PurchaseOrderItem> items = purchaseOrderItemMapper.selectList(itemWrapper);
+        items.forEach(item -> {
+            Product product = productMapper.selectById(item.getProductId());
+            if (product != null) item.setProductName(product.getProductName());
+        });
+        po.setItems(items);
+        return Result.success(po);
+    }
+
+    @Transactional
+    public Result<?> cancelPurchaseOrder(Integer poId) {
+        PurchaseOrder po = purchaseOrderMapper.selectById(poId);
+        if (po == null) throw new BusinessException(404, "purchase order not found");
+        if (!"draft".equals(po.getStatus())) throw new BusinessException("only draft purchase orders can be cancelled");
+        po.setStatus("cancelled");
+        purchaseOrderMapper.updateById(po);
+        return Result.success();
+    }
+
     // ==================== 配送管理 ====================
 
     public Result<?> getDeliveryList(Integer pageNum, Integer pageSize, String status) {
@@ -261,6 +293,7 @@ public class AdminService {
                 throw new BusinessException("当前订单状态不允许分配配送员");
             }
             task = new DeliveryTask();
+            task.setTaskId(deliveryTaskMapper.getNextId());
             task.setOrderId(order.getOrderId());
             task.setCourierId(courierId);
             task.setStatus("pending");
@@ -310,7 +343,7 @@ public class AdminService {
     public Result<?> getPromotionList(Integer pageNum, Integer pageSize) {
         Page<Promotion> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<Promotion> wrapper = new LambdaQueryWrapper<>();
-        wrapper.orderByDesc(Promotion::getPromotionId);
+        wrapper.orderByDesc(Promotion::getActivityId);
         promotionMapper.selectPage(page, wrapper);
         return Result.success(page);
     }
@@ -348,6 +381,7 @@ public class AdminService {
     @Transactional
     public Result<?> createSupplier(Supplier supplier) {
         supplier.setStatus("active");
+        supplier.setSupplierId(supplierMapper.getNextId());
         supplierMapper.insert(supplier);
         return Result.success();
     }
@@ -399,9 +433,11 @@ public class AdminService {
                              * (i.getOrderQuantity() != null ? i.getOrderQuantity() : 0))
             .sum();
         order.setTotalAmount(total);
+        order.setPoId(purchaseOrderMapper.getNextId());
         purchaseOrderMapper.insert(order);
         for (PurchaseOrderItem item : items) {
             item.setPoId(order.getPoId());
+            item.setItemId(purchaseOrderItemMapper.getNextId());
             purchaseOrderItemMapper.insert(item);
         }
         return Result.success(order.getPoId());
@@ -818,6 +854,28 @@ public class AdminService {
         return Result.success(page);
     }
 
+    public Result<?> getAuditLogs(Integer pageNum, Integer pageSize, String module, String startDate, String endDate) {
+        Page<AuditLog> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<AuditLog> wrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.hasText(module)) wrapper.eq(AuditLog::getModule, module);
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            if (StringUtils.hasText(startDate)) {
+                wrapper.ge(AuditLog::getCreateTime, sdf.parse(startDate));
+            }
+            if (StringUtils.hasText(endDate)) {
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(sdf.parse(endDate));
+                cal.add(Calendar.DAY_OF_YEAR, 1);
+                wrapper.lt(AuditLog::getCreateTime, cal.getTime());
+            }
+        } catch (Exception ignored) {
+        }
+        wrapper.orderByDesc(AuditLog::getLogId);
+        auditLogMapper.selectPage(page, wrapper);
+        return Result.success(page);
+    }
+
     // ==================== 骑手管理 ====================
 
     public Result<?> getCourierList(Integer pageNum, Integer pageSize) {
@@ -829,10 +887,30 @@ public class AdminService {
     }
 
     @Transactional
+    public Result<?> createCourier(Courier courier) {
+        if (courier == null) throw new BusinessException("courier cannot be null");
+        if (!StringUtils.hasText(courier.getCourierName())) throw new BusinessException("courierName cannot be empty");
+        if (!StringUtils.hasText(courier.getPhone())) throw new BusinessException("phone cannot be empty");
+        if (!StringUtils.hasText(courier.getPassword())) throw new BusinessException("password cannot be empty");
+        if (courierMapper.selectCount(new LambdaQueryWrapper<Courier>().eq(Courier::getPhone, courier.getPhone())) > 0) {
+            throw new BusinessException("phone already exists");
+        }
+        courier.setPassword(courier.getPassword());
+        if (!StringUtils.hasText(courier.getStatus())) courier.setStatus("active");
+        if (courier.getTotalCount() == null) courier.setTotalCount(0);
+        courier.setCreateTime(new Date());
+        courierMapper.insert(courier);
+        courier.setPassword(null);
+        courier.setIsDisabled("inactive".equalsIgnoreCase(courier.getStatus()) ? 1 : 0);
+        courier.setTodayCount(0);
+        return Result.success(courier);
+    }
+
+    @Transactional
     public Result<?> updateCourierStatus(Integer courierId, Integer isDisabled) {
         Courier courier = courierMapper.selectById(courierId);
         if (courier == null) throw new BusinessException(404, "骑手不存在");
-        courier.setIsDisabled(isDisabled);
+        courier.setStatus(isDisabled != null && isDisabled == 1 ? "inactive" : "active");
         courierMapper.updateById(courier);
         return Result.success();
     }

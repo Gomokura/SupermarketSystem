@@ -7,7 +7,7 @@
 
     <el-table :data="list" border v-loading="loading" class="mt">
       <el-table-column prop="courierId" label="ID" width="80" />
-      <el-table-column prop="name" label="姓名" min-width="120" show-overflow-tooltip />
+      <el-table-column prop="courierName" label="姓名" min-width="120" show-overflow-tooltip />
       <el-table-column prop="phone" label="手机" width="140" />
       <el-table-column label="状态" width="110" align="center">
         <template #default="{ row }">
@@ -40,8 +40,8 @@
     <!-- 新增配送员弹窗 -->
     <el-dialog v-model="addVisible" title="新增配送员" width="420px">
       <el-form :model="addForm" :rules="addRules" ref="addFormRef" label-width="90px">
-        <el-form-item label="姓名" prop="name">
-          <el-input v-model="addForm.name" placeholder="请输入姓名" maxlength="20" />
+        <el-form-item label="姓名" prop="courierName">
+          <el-input v-model="addForm.courierName" placeholder="请输入姓名" maxlength="20" />
         </el-form-item>
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="addForm.phone" placeholder="作为登录账号" maxlength="11" />
@@ -98,7 +98,7 @@ const statusTag = (row) => {
 const toggleStatus = async (row) => {
   const action = row.isDisabled ? '启用' : '禁用'
   try {
-    await ElMessageBox.confirm(`确认${action}配送员「${row.name}」？`, '提示')
+    await ElMessageBox.confirm(`确认${action}配送员「${row.courierName}」？`, '提示')
     await courierAPI.adminUpdateStatus(row.courierId, row.isDisabled ? false : true)
     ElMessage.success(`${action}成功`)
     loadList()
@@ -110,9 +110,9 @@ const toggleStatus = async (row) => {
 // 新增
 const addVisible = ref(false)
 const addFormRef = ref()
-const addForm = ref({ name: '', phone: '', password: '' })
+const addForm = ref({ courierName: '', phone: '', password: '' })
 const addRules = {
-  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  courierName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
@@ -124,7 +124,7 @@ const addRules = {
 }
 
 const openAdd = () => {
-  addForm.value = { name: '', phone: '', password: '' }
+  addForm.value = { courierName: '', phone: '', password: '' }
   addFormRef.value?.clearValidate()
   addVisible.value = true
 }

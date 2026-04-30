@@ -6,8 +6,11 @@ import { ElMessage } from 'element-plus'
 
 const adminRequest = axios.create({ baseURL: '/api', timeout: 10000 })
 adminRequest.interceptors.request.use(config => {
-  const token = localStorage.getItem('adminToken')
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  // 登录接口本身不需要携带 token
+  if (!config.url.includes('/login')) {
+    const token = localStorage.getItem('adminToken')
+    if (token) config.headers.Authorization = `Bearer ${token}`
+  }
   return config
 })
 adminRequest.interceptors.response.use(
@@ -21,8 +24,10 @@ adminRequest.interceptors.response.use(
 
 const courierRequest = axios.create({ baseURL: '/api', timeout: 10000 })
 courierRequest.interceptors.request.use(config => {
-  const token = localStorage.getItem('courierToken')
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  if (!config.url.includes('/login')) {
+    const token = localStorage.getItem('courierToken')
+    if (token) config.headers.Authorization = `Bearer ${token}`
+  }
   return config
 })
 courierRequest.interceptors.response.use(
@@ -49,15 +54,23 @@ export const productAPI = {
   getList: (params) => request.get('/products/list', { params }),
   getById: (id) => request.get(`/products/${id}`),
   getSkus: (productId) => request.get(`/products/${productId}/skus`),
-  getRecommended: () => request.get('/products/recommended'),
+  getRecommended: (limit = 8) => request.get('/products/recommended', { params: { limit } }),
+  getTopSales: (limit = 10) => request.get('/products/top-sales', { params: { limit } }),
+  getNew: (limit = 10) => request.get('/products/new', { params: { limit } }),
+  getSuggestions: (keyword, limit = 10) => request.get('/products/suggestions', { params: { keyword, limit } }),
   getCategoryTree: () => request.get('/products/categories/tree'),
   getByBarcode: (barcode) => request.get(`/products/barcode/${barcode}`),
   add: (data) => adminRequest.post('/products', data),
   update: (id, data) => adminRequest.put(`/products/${id}`, data),
   delete: (id) => adminRequest.delete(`/products/${id}`),
   updateStatus: (id, status) => adminRequest.put(`/products/${id}/status`, null, { params: { status } }),
+  deleteSku: (skuId) => adminRequest.delete(`/products/skus/${skuId}`),
+  saveSkus: (productId, items) => adminRequest.post(`/products/${productId}/skus`, items),
   // 兼容旧调用
-  getCategories: () => request.get('/products/categories/tree')
+  getCategories: () => request.get('/products/categories/tree'),
+  addCategory: (data) => adminRequest.post('/products/categories', data),
+  updateCategory: (data) => adminRequest.put('/products/categories', data),
+  deleteCategory: (id) => adminRequest.delete(`/products/categories/${id}`)
 }
 
 export const cartAPI = {
@@ -65,7 +78,11 @@ export const cartAPI = {
   add: (productId, quantity = 1, skuId) => request.post(`/cart/add?productId=${productId}&quantity=${quantity}${skuId != null ? '&skuId=' + skuId : ''}`),
   updateQuantity: (cartId, quantity) => request.put('/cart/update', { cartId, quantity }),
   remove: (cartId) => request.delete(`/cart/${cartId}`),
-  clear: () => request.delete('/cart/clear')
+  clear: () => request.delete('/cart/clear'),
+  checkItem: (cartId, checked) => request.put('/cart/check', { cartId, checked }),
+  checkAll: (checked) => request.put('/cart/check-all', { checked }),
+  batchDelete: (cartIds) => request.delete('/cart/batch', { data: cartIds }),
+  getCheckedSummary: () => request.get('/cart/checked-summary')
 }
 
 export const orderAPI = {
@@ -121,6 +138,7 @@ export const seckillAPI = {
 }
 
 export const couponAPI = {
+  getCenter: () => request.get('/coupons/center'),
   getAvailable: (orderAmount) => request.get('/coupons/available', { params: { orderAmount } }),
   getMyCoupons: (status) => request.get('/coupons/my', { params: { status } }),
   claim: (couponId) => request.post(`/coupons/claim/${couponId}`),
@@ -170,7 +188,10 @@ export const cashierAPI = {
   getHistory: (params) => adminRequest.get('/cashier/shift/history', { params }),
   searchProduct: (keyword) => adminRequest.get('/products/list', { params: { keyword } }),
   getByBarcode: (barcode) => adminRequest.get(`/products/barcode/${barcode}`),
-  getMemberByPhone: (phone) => adminRequest.get('/auth/cashier/member', { params: { phone } })
+  getMemberByPhone: (phone) => adminRequest.get('/auth/cashier/member', { params: { phone } }),
+  checkout: (data) => adminRequest.post('/cashier/checkout', data),
+  getOrderHistory: (params) => adminRequest.get('/cashier/orders/history', { params }),
+  refund: (orderId) => adminRequest.post('/cashier/orders/refund', { orderId })
 }
 
 export const courierAPI = {
@@ -200,12 +221,12 @@ export const stocktakeAPI = {
 export const adminAPI = {
   getUsers: (params) => adminRequest.get('/admin/users', { params }),
   getUserDetail: (userId) => adminRequest.get(`/admin/users/${userId}`),
-  updateUserStatus: (userId, status) => adminRequest.put(`/admin/users/${userId}/status`, null, { params: { status } }),
+  updateUserStatus: (userId, status, reason) => adminRequest.put(`/admin/users/${userId}/status`, { reason }, { params: { status } }),
   getAdmins: (params) => adminRequest.get('/admin/admins', { params }),
   createAdmin: (data) => adminRequest.post('/admin/admins', data),
   updateAdmin: (id, data) => adminRequest.put(`/admin/admins/${id}`, data),
   updateAdminStatus: (id, status) => adminRequest.put(`/admin/admins/${id}/status`, null, { params: { status } }),
-  resetAdminPassword: (id) => adminRequest.put(`/admin/admins/${id}/reset-password`),
+  resetAdminPassword: (id, newPassword) => adminRequest.put(`/admin/admins/${id}/reset-password`, null, { params: { newPassword } }),
   getOrders: (params) => adminRequest.get('/orders/admin/list', { params }),
   shipOrder: (id, company, trackingNo) => adminRequest.put(`/admin/orders/${id}/shipping`, { company, trackingNo }),
   updateOrderAddress: (id, name, phone, address) => adminRequest.put(`/admin/orders/${id}/address`, { name, phone, address }),
@@ -213,6 +234,8 @@ export const adminAPI = {
   warehousing: (productId, quantity, remark) => adminRequest.post('/admin/inventory/warehousing', null, { params: { productId, quantity, remark } }),
   outbound: (productId, quantity, remark) => adminRequest.post('/admin/inventory/outbound', null, { params: { productId, quantity, remark } }),
   getDeliveries: (params) => adminRequest.get('/admin/deliveries', { params }),
+  assignCourier: (deliveryId, courierId) => adminRequest.put(`/admin/deliveries/${deliveryId}/assign`, null, { params: { courierId } }),
+  updateDeliveryStatus: (deliveryId, status) => adminRequest.put(`/admin/deliveries/${deliveryId}/status`, null, { params: { status } }),
   getSuppliers: (params) => adminRequest.get('/admin/suppliers', { params }),
   createSupplier: (data) => adminRequest.post('/admin/suppliers', data),
   updateSupplier: (id, data) => adminRequest.put(`/admin/suppliers/${id}`, data),
@@ -231,18 +254,22 @@ export const adminAPI = {
   getAuditLogs: (params) => adminRequest.get('/admin/audit-logs', { params }),
   getStatistics: () => adminRequest.get('/admin/statistics'),
   getDashboard: (params) => adminRequest.get('/admin/dashboard', { params }),
-  getTopProducts: (params) => adminRequest.get('/admin/dashboard/top-products', { params }),
+  getTopProducts: (params) => adminRequest.get('/admin/dashboard', { params }),
   getFinance: () => adminRequest.get('/admin/finance'),
+  getFinanceData: () => adminRequest.get('/admin/finance'),
   getPromotions: (params) => adminRequest.get('/admin/promotions', { params }),
   createPromotion: (data) => adminRequest.post('/admin/promotions', data),
   updatePromotion: (id, data) => adminRequest.put(`/admin/promotions/${id}`, data),
-  updatePromotionStatus: (id, status) => adminRequest.put(`/promotions/${id}/status`, { status }),
+  deletePromotion: (id) => adminRequest.delete(`/admin/promotions/${id}`),
+  updatePromotionStatus: (id, status) => adminRequest.put(`/admin/promotions/${id}`, { status }),
   getCoupons: (params) => adminRequest.get('/coupons/admin/list', { params }),
   createCoupon: (data) => adminRequest.post('/coupons/admin', data),
   updateCoupon: (id, data) => adminRequest.put(`/coupons/admin/${id}`, data),
   toggleCoupon: (id, status) => adminRequest.put(`/coupons/admin/${id}/status`, null, { params: { status } }),
   deleteCoupon: (id) => adminRequest.delete(`/coupons/admin/${id}`),
-  batchIssueCoupons: (couponId, userIds) => adminRequest.post('/coupons/admin/batch-issue', { couponId, userIds })
+  batchIssueCoupons: (couponId, userIds) => adminRequest.post('/coupons/admin/batch-issue', { couponId, userIds }),
+  sendMessage: (userId, title, content, msgType = 'SYSTEM', refId = null) =>
+    adminRequest.post('/admin/messages', { userId, title, content, msgType, refId })
 }
 
 // 成员B API: 收藏、售后、评价

@@ -6,12 +6,16 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.supermarket.common.Result;
 import com.supermarket.entity.Address;
 import com.supermarket.mapper.AddressMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
 public class AddressService extends ServiceImpl<AddressMapper, Address> {
+
+    @Autowired
+    private AddressMapper addressMapper;
 
     public Result<?> getUserAddresses(Integer userId) {
         LambdaQueryWrapper<Address> wrapper = new LambdaQueryWrapper<>();
@@ -35,6 +39,7 @@ public class AddressService extends ServiceImpl<AddressMapper, Address> {
                 this.updateById(a);
             }
         }
+        address.setAddressId(addressMapper.getNextId());
         this.save(address);
         return Result.success();
     }

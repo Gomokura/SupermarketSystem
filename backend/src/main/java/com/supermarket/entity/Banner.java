@@ -10,7 +10,7 @@ import java.util.Date;
 @Data
 @TableName("BANNERS")
 public class Banner {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer bannerId;
     private String imageUrl;
     /** 跳转类型：product商品 / category分类 / activity活动 / none无 */

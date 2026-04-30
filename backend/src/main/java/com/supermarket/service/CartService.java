@@ -26,6 +26,13 @@ public class CartService extends ServiceImpl<CartMapper, Cart> {
     @Autowired
     private ProductSkuMapper productSkuMapper;
 
+    @Autowired
+    private CartMapper cartMapper;
+
+    private Integer getNextCartId() {
+        return cartMapper.getNextId();
+    }
+
     /**
      * 购物车列表（含 SKU 规格名称、实时价格、库存状态）
      */
@@ -124,6 +131,7 @@ public class CartService extends ServiceImpl<CartMapper, Cart> {
             }
 
             Cart cart = new Cart();
+            cart.setCartId(getNextCartId());
             cart.setUserId(userId);
             cart.setProductId(productId);
             cart.setSkuId(skuId);

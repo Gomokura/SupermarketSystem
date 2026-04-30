@@ -56,7 +56,8 @@ public class JwtConfig {
     }
 
     public Integer getUserIdFromToken(String token) {
-        return parseToken(token).get("userId", Integer.class);
+        Object userIdObj = parseToken(token).get("userId");
+        return (userIdObj instanceof Number) ? ((Number) userIdObj).intValue() : null;
     }
 
     public String getRoleFromToken(String token) {

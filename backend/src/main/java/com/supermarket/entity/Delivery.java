@@ -10,7 +10,7 @@ import java.util.Date;
 @Data
 @TableName("DELIVERY_TASKS")
 public class Delivery {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     @TableField("TASK_ID")
     private Integer deliveryId;
     private Integer orderId;

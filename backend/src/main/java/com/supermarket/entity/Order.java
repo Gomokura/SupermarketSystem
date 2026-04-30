@@ -3,7 +3,6 @@ package com.supermarket.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.util.Date;
@@ -12,7 +11,7 @@ import java.util.List;
 @Data
 @TableName("ORDERS")
 public class Order {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer orderId;
 
     private String orderNo;
@@ -69,4 +68,10 @@ public class Order {
     private String username;          // 用户名（联表）
     @TableField(exist = false)
     private List<OrderItem> items;    // 订单明细（联表）
+    @TableField(exist = false)
+    private String receiverName;      // 收货人姓名（从快照解析）
+    @TableField(exist = false)
+    private String receiverPhone;    // 联系电话（从快照解析）
+    @TableField(exist = false)
+    private String receiverAddress;  // 收货地址（从快照解析）
 }

@@ -12,7 +12,7 @@ import java.util.List;
 @Data
 @TableName("CASHIER_RECORDS")
 public class CashierRecord {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer recordId;
     private Integer shiftId;
     private Integer userId;

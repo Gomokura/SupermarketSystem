@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 @TableName("CASHIER_RECORD_ITEMS")
 public class CashierRecordItem {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Integer itemId;
     private Integer recordId;
     private Integer productId;

@@ -17,6 +17,7 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
     @Autowired private StocktakeItemMapper itemMapper;
     @Autowired private ProductMapper productMapper;
     @Autowired private InventoryLogMapper inventoryLogMapper;
+    @Autowired private StocktakeTaskMapper stocktakeTaskMapper;
 
     /** 创建盘点任务 */
     @Transactional
@@ -27,6 +28,7 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
         task.setCategoryId("category".equals(scope) ? categoryId : null);
         task.setStatus("pending");
         task.setCreateTime(new Date());
+        task.setTaskId(stocktakeTaskMapper.getNextId());
         this.save(task);
 
         // 拉取商品账面库存生成盘点明细
@@ -40,6 +42,7 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
             item.setProductId(p.getProductId());
             item.setBookStock(p.getStock());
             item.setActualStock(null);
+            item.setId(itemMapper.getNextId());
             itemMapper.insert(item);
         }
         task.setStatus("counting");
@@ -113,6 +116,7 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
                     log.setRemark("盘点调整");
                     log.setOperatorId(operatorId);
                     log.setCreateTime(new Date());
+                    log.setLogId(inventoryLogMapper.getNextId());
                     inventoryLogMapper.insert(log);
                     Map<String, Object> d = new HashMap<>();
                     d.put("productId", item.getProductId());

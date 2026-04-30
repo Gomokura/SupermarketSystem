@@ -1,148 +1,124 @@
 <template>
   <div class="page-container">
-    <h2>站内消息</h2>
-
-    <el-card class="header-card">
-      <div class="header-actions">
-        <el-button type="primary" @click="markAllRead">全部已读</el-button>
-        <el-select v-model="filterType" placeholder="消息类型" clearable @change="loadMessages">
-          <el-option label="全部" value=""></el-option>
-          <el-option label="订单消息" value="ORDER"></el-option>
-          <el-option label="促销消息" value="PROMOTION"></el-option>
-          <el-option label="系统消息" value="SYSTEM"></el-option>
-          <el-option label="退款消息" value="REFUND"></el-option>
-        </el-select>
+    <div class="page-header">
+      <div>
+        <h2>站内消息</h2>
+        <p>支持未读筛选、批量已读和分页浏览。</p>
       </div>
-    </el-card>
-
-    <div class="message-list">
-      <el-card
-        v-for="msg in messages"
-        :key="msg.messageId"
-        class="message-card"
-        :class="{ unread: !msg.isRead }"
-        @click="handleRead(msg)"
-      >
-        <div class="message-content">
-          <div class="message-icon">
-            <el-icon :size="24">
-              <component :is="getMessageIcon(msg.type)" />
-            </el-icon>
-          </div>
-          <div class="message-body">
-            <div class="message-header">
-              <span class="message-title">{{ msg.title }}</span>
-              <el-tag size="small" :type="getTypeTag(msg.type)">{{ getTypeText(msg.type) }}</el-tag>
-              <span v-if="!msg.isRead" class="unread-dot"></span>
-            </div>
-            <div class="message-text">{{ msg.content }}</div>
-            <div class="message-time">{{ formatDateTime(msg.createTime) }}</div>
-          </div>
-        </div>
-      </el-card>
-
-      <el-empty v-if="messages.length === 0" description="暂无消息"></el-empty>
+      <div class="header-actions">
+        <el-select v-model="status" placeholder="全部消息" clearable @change="reload">
+          <el-option label="全部消息" value="" />
+          <el-option label="未读" value="unread" />
+          <el-option label="已读" value="read" />
+        </el-select>
+        <el-button type="primary" plain @click="markAllRead">全部已读</el-button>
+      </div>
     </div>
 
-    <el-pagination
-      v-if="total > 0"
-      class="pagination"
-      background
-      layout="prev, pager, next"
-      :total="total"
-      :page-size="pageSize"
-      :current-page="currentPage"
-      @current-change="handlePageChange"
-    />
+    <el-card shadow="never" v-loading="loading">
+      <div class="message-list">
+        <div
+          v-for="message in messages"
+          :key="message.messageId"
+          class="message-item"
+          :class="{ unread: message.isRead === 0 }"
+          @click="markRead(message)"
+        >
+          <div class="message-main">
+            <div class="message-top">
+              <span class="message-title">{{ message.title }}</span>
+              <el-tag :type="typeTag(message.msgType)" size="small">{{ typeText(message.msgType) }}</el-tag>
+            </div>
+            <div class="message-content">{{ message.content }}</div>
+          </div>
+          <div class="message-side">
+            <span class="message-time">{{ formatDateTime(message.createTime) }}</span>
+            <span v-if="message.isRead === 0" class="unread-dot"></span>
+          </div>
+        </div>
+      </div>
+
+      <el-empty v-if="!loading && messages.length === 0" description="暂无消息" />
+
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="pageNum"
+          v-model:page-size="pageSize"
+          :total="total"
+          layout="total, prev, pager, next"
+          @current-change="loadMessages"
+        />
+      </div>
+    </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { messageAPI } from '@/api'
 
 const messages = ref([])
-const filterType = ref('')
-const currentPage = ref(1)
+const status = ref('')
+const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const loading = ref(false)
 
-const getMessageIcon = (type) => {
-  const iconMap = {
-    'ORDER': 'Message',
-    'PROMOTION': 'Gift',
-    'SYSTEM': 'Bell',
-    'REFUND': 'Money'
-  }
-  return iconMap[type] || 'Message'
-}
-
-const getTypeTag = (type) => {
+const typeText = (value) => {
   const map = {
-    'ORDER': '',
-    'PROMOTION': 'warning',
-    'SYSTEM': 'info',
-    'REFUND': 'success'
+    SYSTEM: '系统',
+    ORDER: '订单',
+    COUPON: '优惠券',
+    AFTER_SALES: '售后'
   }
-  return map[type] || ''
+  return map[value] || value || '通知'
 }
 
-const getTypeText = (type) => {
+const typeTag = (value) => {
   const map = {
-    'ORDER': '订单',
-    'PROMOTION': '促销',
-    'SYSTEM': '系统',
-    'REFUND': '退款'
+    SYSTEM: 'info',
+    ORDER: 'success',
+    COUPON: 'warning',
+    AFTER_SALES: 'danger'
   }
-  return map[type] || '其他'
+  return map[value] || ''
 }
 
-const formatDateTime = (date) => {
-  if (!date) return '-'
-  return new Date(date).toLocaleString('zh-CN')
+const formatDateTime = (value) => {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('zh-CN')
 }
 
 const loadMessages = async () => {
+  loading.value = true
   try {
-    const params = {
-      page: currentPage.value,
+    const res = await messageAPI.getList({
+      status: status.value || undefined,
+      pageNum: pageNum.value,
       pageSize: pageSize.value
-    }
-    if (filterType.value) {
-      params.type = filterType.value
-    }
-    const res = await messageAPI.getList(params)
-    messages.value = res.data?.records || res.data || []
+    })
+    messages.value = res.data?.records || []
     total.value = res.data?.total || 0
-  } catch (error) {
-    console.error(error)
+  } finally {
+    loading.value = false
   }
 }
 
-const handleRead = async (msg) => {
-  if (msg.isRead) return
-  try {
-    await messageAPI.markRead(msg.messageId)
-    msg.isRead = true
-  } catch (error) {
-    console.error(error)
-  }
+const reload = () => {
+  pageNum.value = 1
+  loadMessages()
+}
+
+const markRead = async (message) => {
+  if (message.isRead === 1) return
+  await messageAPI.markRead(message.messageId)
+  message.isRead = 1
 }
 
 const markAllRead = async () => {
-  try {
-    await ElMessageBox.confirm('确定将所有消息标记为已读？', '提示', { type: 'info' })
-    await messageAPI.markAllRead()
-    ElMessage.success('操作成功')
-    loadMessages()
-  } catch (error) {
-    if (error !== 'cancel') console.error(error)
-  }
-}
-
-const handlePageChange = (page) => {
-  currentPage.value = page
+  await messageAPI.markAllRead()
+  ElMessage.success('已全部标记为已读')
   loadMessages()
 }
 
@@ -156,14 +132,26 @@ onMounted(() => {
   padding: 20px;
 }
 
-.header-card {
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
   margin-bottom: 20px;
+}
+
+.page-header h2 {
+  margin: 0 0 6px;
+}
+
+.page-header p {
+  margin: 0;
+  color: #909399;
 }
 
 .header-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 12px;
 }
 
 .message-list {
@@ -172,44 +160,33 @@ onMounted(() => {
   gap: 12px;
 }
 
-.message-card {
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.message-card:hover {
-  transform: translateX(4px);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.message-card.unread {
-  background-color: #f0f9ff;
-  border-left: 3px solid #409eff;
-}
-
-.message-content {
+.message-item {
   display: flex;
+  justify-content: space-between;
   gap: 16px;
+  padding: 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.message-icon {
-  width: 40px;
-  height: 40px;
-  background: #f0f2f5;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #409eff;
-  flex-shrink: 0;
+.message-item:hover {
+  border-color: #cbd5e1;
+  background: #fafafa;
 }
 
-.message-body {
+.message-item.unread {
+  border-left: 4px solid #409eff;
+  background: #f8fbff;
+}
+
+.message-main {
   flex: 1;
   min-width: 0;
 }
 
-.message-header {
+.message-top {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -217,33 +194,38 @@ onMounted(() => {
 }
 
 .message-title {
-  font-weight: 500;
-  color: #333;
+  font-weight: 600;
+  color: #303133;
 }
 
-.unread-dot {
-  width: 8px;
-  height: 8px;
-  background: #409eff;
-  border-radius: 50%;
-  margin-left: auto;
+.message-content {
+  color: #606266;
+  line-height: 1.6;
 }
 
-.message-text {
-  color: #666;
-  font-size: 14px;
-  margin-bottom: 8px;
-  line-height: 1.5;
+.message-side {
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
 }
 
 .message-time {
-  color: #999;
+  color: #909399;
   font-size: 12px;
 }
 
+.unread-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #409eff;
+}
+
 .pagination {
-  margin-top: 20px;
+  margin-top: 16px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
 }
 </style>

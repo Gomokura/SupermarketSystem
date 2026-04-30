@@ -1,129 +1,214 @@
 <template>
   <div class="login-container">
-    <div class="login-box">
-      <h2>超市管理系统</h2>
-      <el-form :model="loginForm" :rules="rules" ref="formRef">
+    <div class="login-card">
+      <h1 class="brand-title">超市管理系统</h1>
+      <p class="brand-subtitle">Smart Supermarket Management</p>
+
+      <div class="role-selector">
+        <div
+          v-for="role in roles"
+          :key="role.id"
+          class="role-card"
+          :class="{ active: activeRole === role.id }"
+          @click="selectRole(role.id)"
+        >
+          <span class="role-icon">{{ role.icon }}</span>
+          <span class="role-name">{{ role.name }}</span>
+          <span class="role-desc">{{ role.desc }}</span>
+        </div>
+      </div>
+
+      <!-- 当前角色账号提示 -->
+      <div class="account-hint">
+        <el-alert type="info" :closable="false" style="padding: 8px 12px">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <span>
+              <strong>{{ currentRoleInfo.name }}</strong>测试账号：
+              <code>{{ currentRoleInfo.username }}</code> /
+              <code>{{ currentRoleInfo.password }}</code>
+            </span>
+            <el-button size="small" link type="primary" @click="fillTestAccount">一键填入</el-button>
+          </div>
+        </el-alert>
+      </div>
+
+      <el-form :model="loginForm" :rules="activeRules" ref="formRef" class="login-form">
         <el-form-item prop="username">
-          <el-input v-model="loginForm.username" placeholder="用户名" prefix-icon="User" />
+          <el-input
+            v-model="loginForm.username"
+            :placeholder="activeRole === 'customer' ? '请输入手机号' : '请输入账号'"
+            size="large"
+            clearable
+          >
+            <template #prefix>
+              <el-icon><User /></el-icon>
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item prop="password">
-          <el-input v-model="loginForm.password" type="password" placeholder="密码" prefix-icon="Lock" />
+          <el-input
+            v-model="loginForm.password"
+            type="password"
+            placeholder="请输入密码"
+            size="large"
+            show-password
+            @keyup.enter="handleLogin"
+          >
+            <template #prefix>
+              <el-icon><Lock /></el-icon>
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" style="width: 100%" @click="handleLogin" :loading="loading">登录</el-button>
-        </el-form-item>
-        <el-form-item>
-          <el-button text @click="showRegister = true">没有账号？去注册</el-button>
+          <el-button
+            type="primary"
+            size="large"
+            class="login-btn"
+            @click="handleLogin"
+            :loading="loading"
+          >
+            登 录
+          </el-button>
         </el-form-item>
       </el-form>
-    </div>
 
-    <el-dialog v-model="showRegister" title="用户注册" width="400px">
-      <el-form :model="registerForm" :rules="registerRules" ref="registerFormRef">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="registerForm.username" />
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input v-model="registerForm.password" type="password" />
-        </el-form-item>
-        <el-form-item label="真实姓名" prop="realName">
-          <el-input v-model="registerForm.realName" />
-        </el-form-item>
-        <el-form-item label="手机号" prop="phone">
-          <el-input v-model="registerForm.phone" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showRegister = false">取消</el-button>
-        <el-button type="primary" @click="handleRegister">注册</el-button>
-      </template>
-    </el-dialog>
+      <div class="all-accounts">
+        <el-collapse>
+          <el-collapse-item title="查看所有测试账号" name="1">
+            <table class="account-table">
+              <thead>
+                <tr><th>角色</th><th>账号</th><th>密码</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in roles" :key="r.id" :class="{ highlight: activeRole === r.id }">
+                  <td>{{ r.name }}</td>
+                  <td><code>{{ r.username }}</code></td>
+                  <td><code>{{ r.password }}</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </el-collapse-item>
+        </el-collapse>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { authAPI } from '@/api'
+import { User, Lock } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
+import { authAPI } from '@/api'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const formRef = ref()
-const registerFormRef = ref()
 const loading = ref(false)
-const showRegister = ref(false)
+const activeRole = ref('customer')
 
-const loginForm = reactive({
-  username: '',
-  password: ''
-})
+const roles = [
+  { id: 'customer',  name: '顾客',  icon: '🛒', desc: '购物消费',  username: '13800138001', password: '123456' },
+  { id: 'admin',     name: '管理员', icon: '👑', desc: '系统管理',  username: 'admin',        password: '123456' },
+  { id: 'courier',   name: '配送员', icon: '🚴', desc: '订单配送',  username: '13900000001', password: '123456' },
+  { id: 'cashier',   name: '收银员', icon: '💳', desc: '收银结账',  username: 'cashier01',   password: '123456' },
+  { id: 'warehouse', name: '仓储',   icon: '📦', desc: '库存管理',  username: 'admin',        password: '123456' },
+  { id: 'dashboard', name: '看板',   icon: '📊', desc: '数据分析',  username: 'admin',        password: '123456' },
+]
 
-const registerForm = reactive({
-  username: '',
-  password: '',
-  realName: '',
-  phone: ''
-})
+const loginForm = reactive({ username: '13800138001', password: '123456' })
 
-const rules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+const currentRoleInfo = computed(() => roles.find(r => r.id === activeRole.value) || roles[0])
+
+const selectRole = (roleId) => {
+  activeRole.value = roleId
+  fillTestAccount()
 }
 
-const registerRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  realName: [{ required: true, message: '请输入真实姓名', trigger: 'blur' }]
+const fillTestAccount = () => {
+  const role = currentRoleInfo.value
+  loginForm.username = role.username
+  loginForm.password = role.password
+  formRef.value?.clearValidate()
 }
+
+// Auto-fill when role changes
+watch(activeRole, () => fillTestAccount())
+
+const activeRules = computed(() => {
+  if (activeRole.value === 'customer') {
+    return {
+      username: [
+        { required: true, message: '请输入手机号', trigger: 'blur' },
+        { pattern: /^1[3-9]\d{9}$|^\w{2,20}$/, message: '请输入有效的手机号或账号', trigger: 'blur' }
+      ],
+      password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+    }
+  }
+  return {
+    username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+    password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+  }
+})
 
 const handleLogin = async () => {
   await formRef.value.validate()
   loading.value = true
   try {
-    // 先尝试管理员登录
-    let res = null
-    let isAdmin = false
-    try {
-      res = await authAPI.adminLogin(loginForm)
-      isAdmin = true
-    } catch {
-      // 管理员登录失败，再试普通用户
-      res = await authAPI.login(loginForm)
-    }
+    // 顾客登录：手机号放 phone 字段，其他角色放 username
+    const isPhone = /^1[3-9]\d{9}$/.test(loginForm.username)
+    const loginData = activeRole.value === 'customer'
+      ? { phone: isPhone ? loginForm.username : undefined, username: isPhone ? undefined : loginForm.username, password: loginForm.password }
+      : { username: loginForm.username, password: loginForm.password }
+    let result
 
-    const data = res.data
-    // 存 token
-    userStore.setToken(data.token)
-    // 存用户信息（登录接口已返回，无需再请求）
-    userStore.setUserInfo({
-      ...data,
-      role: isAdmin ? (data.role || 'admin') : 'user'
-    })
+    if (activeRole.value === 'customer') {
+      result = await authAPI.login(loginData)
+      userStore.login('customer', {
+        id: result.data.userId,
+        name: result.data.nickname || result.data.username,
+        role: 'customer',
+        username: result.data.username,
+        points: result.data.points,
+        memberLevel: result.data.memberLevel,
+        phone: result.data.phone
+      })
+      userStore.setToken(result.data.token)
+    } else if (['admin', 'cashier', 'warehouse', 'dashboard'].includes(activeRole.value)) {
+      result = await authAPI.adminLogin(loginData)
+      userStore.login('admin', {
+        id: result.data.adminId,
+        name: result.data.realName || result.data.username,
+        role: result.data.role || activeRole.value,
+        username: result.data.username
+      })
+      userStore.setAdminToken(result.data.token)
+    } else if (activeRole.value === 'courier') {
+      result = await authAPI.courierLogin(loginData)
+      userStore.login('courier', {
+        id: result.data.courierId,
+        name: result.data.courierName,
+        role: 'courier',
+        username: result.data.courierName,
+        phone: result.data.phone,
+        status: result.data.status
+      })
+      userStore.setCourierToken(result.data.token)
+    }
 
     ElMessage.success('登录成功')
-    if (isAdmin) {
-      router.push('/admin/dashboard')
-    } else {
-      router.push('/home')
+
+    const redirectMap = {
+      customer: '/', admin: '/admin', cashier: '/pos',
+      courier: '/courier', warehouse: '/admin', dashboard: '/admin'
     }
-  } catch (error) {
-    console.error(error)
+    router.push(redirectMap[activeRole.value])
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || e.message || '登录失败，请检查账号密码')
   } finally {
     loading.value = false
-  }
-}
-
-const handleRegister = async () => {
-  await registerFormRef.value.validate()
-  try {
-    await authAPI.register(registerForm)
-    ElMessage.success('注册成功，请登录')
-    showRegister.value = false
-  } catch (error) {
-    console.error(error)
   }
 }
 </script>
@@ -131,24 +216,158 @@ const handleRegister = async () => {
 <style scoped>
 .login-container {
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-.login-box {
-  width: 400px;
-  padding: 40px;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+.login-card {
+  width: 100%;
+  max-width: 480px;
+  padding: 36px 32px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
-.login-box h2 {
+.brand-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
   text-align: center;
-  margin-bottom: 30px;
-  color: #333;
+}
+
+.brand-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.role-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.role-card {
+  padding: 10px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.role-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.role-card.active {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.25);
+}
+
+.role-icon {
+  display: block;
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+
+.role-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.role-desc {
+  display: block;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.account-hint {
+  margin-bottom: 16px;
+}
+
+.login-form {
+  margin-top: 4px;
+}
+
+.login-btn {
+  width: 100%;
+  font-size: 16px;
+  letter-spacing: 2px;
+  border-radius: 10px;
+  height: 44px;
+}
+
+.all-accounts {
+  margin-top: 4px;
+}
+
+.all-accounts :deep(.el-collapse) {
+  border: none;
+  background: transparent;
+}
+
+.all-accounts :deep(.el-collapse-item__header) {
+  background: transparent;
+  color: rgba(255,255,255,0.6);
+  font-size: 12px;
+  border: none;
+  padding: 0;
+  height: 32px;
+}
+
+.all-accounts :deep(.el-collapse-item__wrap) {
+  background: transparent;
+  border: none;
+}
+
+.all-accounts :deep(.el-collapse-item__content) {
+  padding-bottom: 0;
+}
+
+.account-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  color: rgba(255,255,255,0.8);
+}
+
+.account-table th {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.5);
+  font-weight: 500;
+}
+
+.account-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.account-table tr.highlight td {
+  color: #79a8ff;
+}
+
+.account-table code {
+  background: rgba(255,255,255,0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: monospace;
 }
 </style>

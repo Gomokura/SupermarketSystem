@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('scripts:', list\\(d.get\\('scripts',{}\\).keys\\(\\)\\)\\)\")",
+      "Bash(java -jar target/supermarket-backend-1.0.0.jar)",
+      "Bash(echo \"后端启动中 PID=$!\")"
+    ]
+  }
+}

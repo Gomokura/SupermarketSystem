@@ -18,8 +18,9 @@ public class WarehouseController {
     @GetMapping("/inventory")
     public Result<?> inventoryOverview(
             @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "20") Integer pageSize) {
-        return warehouseService.inventoryOverview(pageNum, pageSize);
+            @RequestParam(defaultValue = "20") Integer pageSize,
+            @RequestParam(required = false) String keyword) {
+        return warehouseService.inventoryOverview(pageNum, pageSize, keyword);
     }
 
     /** 低库存预警列表 GET /warehouse/inventory/low-stock */
@@ -33,11 +34,13 @@ public class WarehouseController {
     public Result<?> inventoryLogs(
             @RequestParam(required = false) Integer productId,
             @RequestParam(required = false) String changeType,
+            @RequestParam(required = false) String type,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "20") Integer pageSize) {
-        return warehouseService.inventoryLogs(productId, changeType, startDate, endDate, pageNum, pageSize);
+        String effectiveType = changeType != null ? changeType : type;
+        return warehouseService.inventoryLogs(productId, effectiveType, startDate, endDate, pageNum, pageSize);
     }
 
     /** 报损登记 POST /warehouse/damage */

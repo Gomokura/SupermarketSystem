@@ -24,6 +24,7 @@ public class AfterSaleService extends ServiceImpl<AfterSaleMapper, AfterSale> {
 
     @Autowired private OrderMapper orderMapper;
     @Autowired private UserMapper userMapper;
+    @Autowired private AfterSaleMapper afterSaleMapper;
 
     /** C端：提交售后申请 */
     @Transactional
@@ -44,6 +45,7 @@ public class AfterSaleService extends ServiceImpl<AfterSaleMapper, AfterSale> {
         afterSale.setUserId(userId);
         afterSale.setStatus("pending");
         afterSale.setCreateTime(new Date());
+        afterSale.setAfterSaleId(afterSaleMapper.getNextId());
         this.save(afterSale);
 
         // 更新订单状态

@@ -24,6 +24,7 @@ public class ReviewService extends ServiceImpl<ReviewMapper, Review> {
 
     @Autowired private UserMapper userMapper;
     @Autowired private ProductMapper productMapper;
+    @Autowired private ReviewMapper reviewMapper;
 
     /** C端：查询商品的公开评价 */
     public Result<?> getProductReviews(Integer productId, Integer pageNum, Integer pageSize) {
@@ -43,6 +44,7 @@ public class ReviewService extends ServiceImpl<ReviewMapper, Review> {
         review.setUserId(userId);
         review.setIsHidden(0);
         review.setCreateTime(new Date());
+        review.setReviewId(reviewMapper.getNextId());
         this.save(review);
 
         // 更新商品平均评分

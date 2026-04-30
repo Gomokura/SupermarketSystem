@@ -1,6 +1,5 @@
 package com.supermarket.interceptor;
 
-import com.supermarket.common.Result;
 import com.supermarket.config.JwtConfig;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -22,7 +21,7 @@ public class JwtInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String token = request.getHeader("Authorization");
-        
+
         if (!StringUtils.hasText(token) || !token.startsWith("Bearer ")) {
             sendUnauthorizedResponse(response, "未登录或token无效");
             return false;
@@ -30,19 +29,27 @@ public class JwtInterceptor implements HandlerInterceptor {
 
         token = token.substring(7);
 
+        Claims claims;
         try {
-            Claims claims = jwtConfig.parseToken(token);
-            request.setAttribute("userId", claims.get("userId", Integer.class));
-            request.setAttribute("username", claims.getSubject());
-            request.setAttribute("role", claims.get("role", String.class));
-            return enforceRoleIfNeeded(request, response);
+            claims = jwtConfig.parseToken(token);
         } catch (ExpiredJwtException e) {
             sendUnauthorizedResponse(response, "token已过期");
             return false;
         } catch (Exception e) {
-            sendUnauthorizedResponse(response, "token解析失败");
+            sendUnauthorizedResponse(response, "token无效，请重新登录");
             return false;
         }
+
+        // JJWT 0.12.x 反序列化数字可能为 Long，统一转 Integer
+        Object userIdObj = claims.get("userId");
+        Integer userId = (userIdObj instanceof Number) ? ((Number) userIdObj).intValue() : null;
+        String username = claims.getSubject();
+        String role = claims.get("role", String.class);
+
+        request.setAttribute("userId", userId);
+        request.setAttribute("username", username);
+        request.setAttribute("role", role);
+        return enforceRoleIfNeeded(request, response);
     }
 
     private boolean enforceRoleIfNeeded(HttpServletRequest request, HttpServletResponse response) throws Exception {
