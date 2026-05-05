@@ -32,7 +32,7 @@
         <div class="product-meta">
           <span v-if="product.brandName" class="meta-tag">{{ product.brandName }}</span>
           <span class="meta-tag">已售 {{ product.salesCount || 0 }}</span>
-          <el-rate :model-value="product.rating || 0" disabled size="small" />
+          <el-rate :model-value="product.avgRating || product.rating || 0" disabled size="small" />
         </div>
       </div>
 

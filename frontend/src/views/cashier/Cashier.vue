@@ -642,7 +642,7 @@ const refundOrder = async (order) => {
     await ElMessageBox.confirm(`确定退款订单 ${order.orderNo} 吗？金额：¥${order.totalAmount}`, '退款确认', {
       type: 'warning'
     })
-    await cashierAPI.refund(order.orderId)
+    await cashierAPI.refund(order.orderNo)
     ElMessage.success('退款成功')
     searchOrders()
   } catch (e) {

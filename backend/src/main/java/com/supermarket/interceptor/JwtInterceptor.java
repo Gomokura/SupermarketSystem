@@ -46,7 +46,9 @@ public class JwtInterceptor implements HandlerInterceptor {
         String username = claims.getSubject();
         String role = claims.get("role", String.class);
 
+        // adminId 和 userId 指向同一个数值（admin 登录时 token 携带的是 adminId）
         request.setAttribute("userId", userId);
+        request.setAttribute("adminId", userId);
         request.setAttribute("username", username);
         request.setAttribute("role", role);
         return enforceRoleIfNeeded(request, response);

@@ -1,6 +1,6 @@
 export const MENU_CONFIG = {
   admin: [
-    { key: 'dashboard', path: '/admin/dashboard', icon: 'DataAnalysis', label: 'Dashboard' },
+    { key: 'dashboard', path: '/admin', icon: 'DataAnalysis', label: 'Dashboard' },
     { key: 'products', path: '/admin/products', icon: 'Goods', label: '商品' },
     { key: 'categories', path: '/admin/categories', icon: 'Collection', label: '分类' },
     { key: 'orders', path: '/admin/orders', icon: 'List', label: '订单' },
@@ -45,7 +45,7 @@ export const MENU_CONFIG = {
     }
   ],
   store_manager: [
-    { key: 'dashboard', path: '/admin/dashboard', icon: 'DataAnalysis', label: 'Dashboard' },
+    { key: 'dashboard', path: '/admin', icon: 'DataAnalysis', label: 'Dashboard' },
     { key: 'products', path: '/admin/products', icon: 'Goods', label: '商品' },
     { key: 'categories', path: '/admin/categories', icon: 'Collection', label: '分类' },
     { key: 'orders', path: '/admin/orders', icon: 'List', label: '订单' },
@@ -57,7 +57,7 @@ export const MENU_CONFIG = {
     { key: 'dashboard', path: '/cashier', icon: 'Money', label: '收银台' }
   ],
   warehouse_staff: [
-    { key: 'dashboard', path: '/admin/dashboard', icon: 'DataAnalysis', label: 'Dashboard' },
+    { key: 'dashboard', path: '/admin', icon: 'DataAnalysis', label: 'Dashboard' },
     { key: 'inventory', path: '/admin/inventory', icon: 'Box', label: '库存' },
     {
       key: 'warehouse',

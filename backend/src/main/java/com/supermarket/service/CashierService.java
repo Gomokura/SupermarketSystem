@@ -320,6 +320,25 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
         return Result.success(order);
     }
 
+    /** K-13: 历史订单查询（支持订单号/手机号搜索） */
+    public Result<?> getOrderHistory(Integer cashierId, String orderNo, String phone, Integer pageNum, Integer pageSize) {
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Order> page =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<Order> w = new LambdaQueryWrapper<>();
+        w.eq(Order::getSource, "CASHIER");
+        if (orderNo != null && !orderNo.isEmpty()) w.eq(Order::getOrderNo, orderNo);
+        if (phone != null && !phone.isEmpty()) w.eq(Order::getReceiverPhone, phone);
+        w.orderByDesc(Order::getCreateTime);
+        orderMapper.selectPage(page, w);
+        // 填充 items
+        for (Order o : page.getRecords()) {
+            List<OrderItem> items = orderItemMapper.selectList(
+                    new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, o.getOrderId()));
+            o.setItems(items);
+        }
+        return Result.success(page);
+    }
+
     /** K-14: 收银台退款（整单退款，库存回滚） */
     @Transactional
     public Result<?> refundCashierOrder(Integer cashierId, String orderNo, String reason) {

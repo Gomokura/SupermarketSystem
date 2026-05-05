@@ -73,6 +73,17 @@ public class CashierController {
         return cashierService.findCashierOrder(orderNo);
     }
 
+    /** K-13 历史订单查询 */
+    @GetMapping("/orders/history")
+    public Result<?> orderHistory(
+            @RequestAttribute Integer adminId,
+            @RequestParam(required = false) String orderNo,
+            @RequestParam(required = false) String phone,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        return cashierService.getOrderHistory(adminId, orderNo, phone, pageNum, pageSize);
+    }
+
     /** K-14 收银退款（整单） */
     @PostMapping("/refund")
     public Result<?> refund(

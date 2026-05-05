@@ -187,8 +187,21 @@ const loadNewProducts = async () => {
 const loadRecommended = async () => {
   try {
     const res = await productAPI.getRecommended()
-    recommendedProducts.value = res.data || []
-  } catch (e) { console.error(e) }
+    const list = res.data || []
+    if (list.length === 0) {
+      // 兜底：取热销商品作为推荐
+      const hotRes = await productAPI.getTopSales(8)
+      recommendedProducts.value = hotRes.data || []
+    } else {
+      recommendedProducts.value = list
+    }
+  } catch {
+    // 异常兜底：取热销商品
+    try {
+      const hotRes = await productAPI.getTopSales(8)
+      recommendedProducts.value = hotRes.data || []
+    } catch {}
+  }
 }
 
 const loadSeckill = async () => {

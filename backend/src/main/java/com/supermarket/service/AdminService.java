@@ -631,13 +631,48 @@ public class AdminService {
         Map<String, Object> salesTrend = new LinkedHashMap<>();
         salesTrend.put("currentRevenue", Math.round(currentRevenue * 100.0) / 100.0);
         salesTrend.put("currentOrderCount", currentOrderCount);
+        salesTrend.put("momGrowthRate", momGrowth);
         salesTrend.put("series", revenueByDay.keySet());
         salesTrend.put("revenue", new ArrayList<>(revenueByDay.values()));
         salesTrend.put("orderCount", new ArrayList<>(orderCountByDay.values()));
         salesTrend.put("yoyRevenue", Math.round(prevYearRevenue * 100.0) / 100.0);
         salesTrend.put("yoyGrowthRate", yoyGrowth);
         salesTrend.put("momRevenue", Math.round(prevPeriodRevenue * 100.0) / 100.0);
-        salesTrend.put("momGrowthRate", momGrowth);
+
+        // monthRevenue / monthOrderCount（当月累计）
+        Calendar monthCal = Calendar.getInstance();
+        monthCal.set(Calendar.DAY_OF_MONTH, 1);
+        monthCal.set(Calendar.HOUR_OF_DAY, 0);
+        monthCal.set(Calendar.MINUTE, 0);
+        monthCal.set(Calendar.SECOND, 0);
+        monthCal.set(Calendar.MILLISECOND, 0);
+        Date monthStart = monthCal.getTime();
+
+        LambdaQueryWrapper<Order> monthWrapper = new LambdaQueryWrapper<>();
+        monthWrapper.ge(Order::getCreateTime, monthStart)
+                .le(Order::getCreateTime, now)
+                .in(Order::getStatus, revenueStatuses);
+        List<Order> monthOrders = orderMapper.selectList(monthWrapper);
+        double monthRevenue = 0;
+        int monthOrderCount = 0;
+        for (Order o : monthOrders) {
+            monthRevenue += o.getPayAmount() != null ? o.getPayAmount() : 0;
+            monthOrderCount++;
+        }
+        salesTrend.put("monthRevenue", Math.round(monthRevenue * 100.0) / 100.0);
+        salesTrend.put("monthOrderCount", monthOrderCount);
+
+        // monthRefundAmount（当月退款）
+        LambdaQueryWrapper<Order> refundWrapper = new LambdaQueryWrapper<>();
+        refundWrapper.ge(Order::getCreateTime, monthStart)
+                .le(Order::getCreateTime, now)
+                .in(Order::getStatus, Arrays.asList("REFUNDED", "CANCELLED"));
+        List<Order> refundOrders = orderMapper.selectList(refundWrapper);
+        double monthRefund = 0;
+        for (Order o : refundOrders) {
+            monthRefund += o.getPayAmount() != null ? o.getPayAmount() : 0;
+        }
+        salesTrend.put("monthRefundAmount", Math.round(monthRefund * 100.0) / 100.0);
 
         // Rankings: top products/categories by quantity in current period
         List<Integer> orderIds = new ArrayList<>();
@@ -799,6 +834,7 @@ public class AdminService {
 
         Map<String, Object> couponAnalysis = new LinkedHashMap<>();
         couponAnalysis.put("issuedCount", issued);
+        couponAnalysis.put("claimedCount", issued);
         couponAnalysis.put("usedCount", used);
         couponAnalysis.put("unusedCount", unused);
         couponAnalysis.put("expiredCount", expired);
@@ -832,6 +868,15 @@ public class AdminService {
         pointsAnalysis.put("netChange", netChange);
         pointsAnalysis.put("reasonBreakdown", reasonRows);
 
+        // lowStockCount
+        long lowStockCount = 0;
+        try {
+            LambdaQueryWrapper<Product> lowWrapper = new LambdaQueryWrapper<>();
+            lowWrapper.eq(Product::getIsDeleted, 0);
+            lowWrapper.apply("STOCK <= STOCK_WARNING OR (STOCK_WARNING IS NULL AND STOCK <= 10)");
+            lowStockCount = productMapper.selectCount(lowWrapper);
+        } catch (Exception ignored) {}
+
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("salesTrend", salesTrend);
         data.put("topProducts", topProducts);
@@ -839,6 +884,7 @@ public class AdminService {
         data.put("userAnalysis", userAnalysis);
         data.put("couponAnalysis", couponAnalysis);
         data.put("pointsAnalysis", pointsAnalysis);
+        data.put("lowStockCount", lowStockCount);
 
         return Result.success(data);
     }

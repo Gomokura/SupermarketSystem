@@ -86,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { adminAPI, orderAPI, afterSaleAPI } from '@/api'
 import {
@@ -260,7 +260,7 @@ const renderCoupon = (data) => {
       type: 'funnel', left: '15%', width: '70%', gap: 4,
       data: [
         { name: '已发放', value: a.issuedCount || 100, itemStyle: { color: '#1677ff' } },
-        { name: '已领取', value: a.claimedCount || 80, itemStyle: { color: '#69b1ff' } },
+        { name: '已领取', value: a.claimedCount || a.issuedCount || 80, itemStyle: { color: '#69b1ff' } },
         { name: '已使用', value: a.usedCount || 50, itemStyle: { color: '#52c41a' } },
       ],
       label: { position: 'inside', formatter: '{b}\n{c}张' }
@@ -277,9 +277,9 @@ const loadData = async () => {
       raw.value.todayRevenue = d.salesTrend?.currentRevenue || 0
       raw.value.todayOrderCount = d.salesTrend?.currentOrderCount || 0
       raw.value.todayGrowthRate = (d.salesTrend?.momGrowthRate || 0) * 100
-      raw.value.monthRevenue = d.monthRevenue || 0
-      raw.value.monthOrderCount = d.monthOrderCount || 0
-      raw.value.monthRefundAmount = d.monthRefundAmount || 0
+      raw.value.monthRevenue = d.salesTrend?.monthRevenue || 0
+      raw.value.monthOrderCount = d.salesTrend?.monthOrderCount || 0
+      raw.value.monthRefundAmount = d.salesTrend?.monthRefundAmount || 0
       raw.value.lowStockCount = d.lowStockCount || 0
       renderTrend(d)
       renderProduct(d)
@@ -296,17 +296,19 @@ const loadData = async () => {
       afterSaleAPI.adminGetList({ status: 'PENDING', pageNum: 1, pageSize: 1 }),
       adminAPI.getPurchaseOrders({ status: 'PENDING', pageNum: 1, pageSize: 1 }).catch(() => ({ data: { total: 0 } }))
     ])
-    raw.value.pendingOrders = or.data?.total || 0
-    raw.value.pendingRefunds = ar.data?.total || 0
-    raw.value.pendingPurchase = pr.data?.total || 0
+    raw.value.pendingOrders = or.data?.total ?? or.data?.records?.length ?? 0
+    raw.value.pendingRefunds = ar.data?.total ?? ar.data?.records?.length ?? 0
+    raw.value.pendingPurchase = pr.data?.total ?? 0
   } catch {}
 }
 
 const onResize = () => Object.values(charts).forEach(c => c?.resize())
 
 onMounted(() => {
-  initCharts()
-  loadData()
+  nextTick(() => {
+    initCharts()
+    loadData()
+  })
   window.addEventListener('resize', onResize)
 })
 
