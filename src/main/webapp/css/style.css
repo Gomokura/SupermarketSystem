@@ -1,0 +1,91 @@
+/* ==================== 基础样式 ==================== */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* ==================== 卡片 ==================== */
+.card {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: box-shadow 0.2s;
+}
+.card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+/* ==================== 导航栏 ==================== */
+.navbar-brand {
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+/* ==================== 商品卡片 ==================== */
+.product-card {
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s;
+}
+.product-card:hover {
+    transform: translateY(-3px);
+}
+.product-card img {
+    object-fit: cover;
+    height: 200px;
+}
+
+/* ==================== 按钮 ==================== */
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+.btn-primary:hover {
+    background-color: #0b5ed7;
+}
+
+/* ==================== 表格 ==================== */
+.table th {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.875rem;
+}
+
+/* ==================== 分页 ==================== */
+.pagination {
+    justify-content: center;
+}
+
+/* ==================== 购物车 ==================== */
+.price-tag {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #dc3545;
+}
+
+/* ==================== 订单状态 ==================== */
+.order-status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+}
+
+/* ==================== 收银台 ==================== */
+.cashier-total {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #dc3545;
+}
+
+/* ==================== 响应式 ==================== */
+@media (max-width: 768px) {
+    .product-card img {
+        height: 150px;
+    }
+    .navbar-collapse {
+        background: #fff;
+        padding: 10px;
+        border-radius: 4px;
+    }
+}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <settings>
+        <!-- 下划线转驼峰 -->
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+        <!-- 返回空值的字段设置为 null -->
+        <setting name="callSettersOnNulls" value="true"/>
+        <!-- 日志 -->
+        <setting name="logImpl" value="STDOUT_LOGGING"/>
+    </settings>
+</configuration>
