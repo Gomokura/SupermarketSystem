@@ -64,8 +64,8 @@
 **Request Body:**
 ```json
 {
-  "username": "testuser",
-  "password": "123456"
+  "username": "13800138001",
+  "password": "user123"
 }
 ```
 
@@ -96,7 +96,7 @@
 ```json
 {
   "username": "newuser",
-  "password": "123456",
+  "password": "newpass123",
   "phone": "13800138000",
   "nickname": "新用户",
   "realName": "张三",
@@ -140,8 +140,8 @@
 **Request Body:**
 ```json
 {
-  "oldPassword": "123456",
-  "newPassword": "654321"
+  "oldPassword": "user123",
+  "newPassword": "newpass123"
 }
 ```
 
@@ -156,7 +156,7 @@
 ```json
 {
   "username": "admin",
-  "password": "123456"
+  "password": "admin123"
 }
 ```
 
@@ -194,7 +194,7 @@
 ```json
 {
   "username": "13900000001",
-  "password": "123456"
+  "password": "courier123"
 }
 ```
 
@@ -974,7 +974,8 @@
 | 项目 | 配置 |
 |------|------|
 | 数据库 | Oracle XE 21c |
-| 连接地址 | `localhost:1521/XE` |
+| 连接地址 | `localhost:1521/ORCL` |
 | 用户名 | `system` |
+| 密码 | `Liu12345` |
 | 端口 | `8080` |
-| 技术栈 | Spring Boot 3.2 / MyBatis-Plus 3.5.7 / Java 21 |
+| 技术栈 | Spring Boot 3.2 / MyBatis-Plus 3.5.7 / JDK 17+ |

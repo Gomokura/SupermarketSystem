@@ -14,9 +14,9 @@ spring:
   datasource:
     driver-class-name: oracle.jdbc.OracleDriver
     # 使用 Oracle XE 实例
-    url: jdbc:oracle:thin:@127.0.0.1:1521:XE
+    url: jdbc:oracle:thin:@127.0.0.1:1521:ORCL
     username: system
-    password: 123456
+    password: Liu12345
     hikari:
       connection-timeout: 30000
       maximum-pool-size: 10

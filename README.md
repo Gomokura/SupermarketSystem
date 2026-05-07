@@ -98,7 +98,7 @@ SupermarketSystem/
 执行 `database/all_tables.sql`（v3.0 完整版，包含建表、序列、索引、初始数据，会自动清理旧表）：
 
 ```bash
-sqlplus system/123456@localhost:1521/XE @database/all_tables.sql
+sqlplus system/Liu12345@ORCL @database/all_tables.sql
 ```
 
 > `database/` 目录下的 `01_tables.sql` ~ `08_additions.sql` 是旧版分散脚本，已被 `all_tables.sql` 整合替代，**无需执行**。
@@ -110,9 +110,9 @@ sqlplus system/123456@localhost:1521/XE @database/all_tables.sql
 ```yaml
 spring:
   datasource:
-    url: jdbc:oracle:thin:@//localhost:1521/XE
+    url: jdbc:oracle:thin:@localhost:1521/ORCL
     username: system
-    password: 123456
+    password: Liu12345
 ```
 
 ### 3. 启动后端
@@ -145,8 +145,13 @@ npm run dev
 
 **默认账户：**
 - 管理员：`admin` / `admin123`
-- 普通用户：`user01` / `user123`
-- 配送员：账号由管理员后台创建，初始密码 `123456`
+- 店长：`manager` / `manager123`
+- 收银员：`cashier01` / `cashier123`
+- 仓管：`warehouse01` / `warehouse123`
+- 商品专员：`product01` / `product123`
+- 客服：`service01` / `service123`
+- 普通用户：`13800138001` / `user123`（银卡会员）
+- 配送员：`13900000001` / `courier123`
 
 ## 开发进度
 

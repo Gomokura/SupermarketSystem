@@ -101,7 +101,7 @@
 ```json
 {
   "username": "newuser",
-  "password": "123456",
+  "password": "newpass123",
   "phone": "13800138000",
   "nickname": "新用户",
   "realName": "张三",
@@ -145,8 +145,8 @@
 **Request Body:**
 ```json
 {
-  "oldPassword": "123456",
-  "newPassword": "654321"
+  "oldPassword": "user123",
+  "newPassword": "newpass123"
 }
 ```
 
@@ -213,8 +213,8 @@
 **Request Body:**
 ```json
 {
-  "oldPassword": "123456",
-  "newPassword": "654321"
+  "oldPassword": "courier123",
+  "newPassword": "newpass123"
 }
 ```
 
