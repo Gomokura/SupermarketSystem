@@ -6,18 +6,22 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.util.Date;
+
 @Data
 @TableName("BRANDS")
 public class Brand {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "BRAND_ID", type = IdType.INPUT)
+    @TableField("brand_id")
     private Integer brandId;
+    @TableField("brand_name")
     private String brandName;
+    @TableField("logo_url")
     private String logoUrl;
     private String description;
-    @TableField(exist = false)
-    private Integer sortOrder;
-    private String status;        // active / inactive
-
-    @TableField(exist = false)
+    @TableField("product_count")
     private Integer productCount;
+    private String status;
+    @TableField("create_time")
+    private Date createTime;
 }

@@ -50,7 +50,7 @@
         <!-- 优惠券 -->
         <el-form-item label="优惠券">
           <el-select v-model="selectedCouponId" placeholder="选择优惠券" clearable style="width: 300px" @change="calcPrice">
-            <el-option :value="null" label="不使用优惠券" />
+            <el-option :value="''" label="不使用优惠券" />
             <el-option
               v-for="c in availableCoupons"
               :key="c.userCouponId"
@@ -91,10 +91,10 @@
     <el-card class="section-card">
       <template #header><span>支付方式</span></template>
       <el-radio-group v-model="paymentMethod">
-        <el-radio value="wechat">微信支付</el-radio>
-        <el-radio value="alipay">支付宝</el-radio>
-        <el-radio value="bank">银行卡</el-radio>
-        <el-radio value="cod">货到付款</el-radio>
+        <el-radio value="WECHAT">微信支付</el-radio>
+        <el-radio value="ALIPAY">支付宝</el-radio>
+        <el-radio value="BANK">银行卡</el-radio>
+        <el-radio value="COD">货到付款</el-radio>
       </el-radio-group>
     </el-card>
 
@@ -178,7 +178,7 @@ const cartItems = ref([])
 const addresses = ref([])
 const availableCoupons = ref([])
 const selectedAddressId = ref(null)
-const selectedCouponId = ref(null)
+const selectedCouponId = ref('')
 const usePoints = ref(false)
 const paymentMethod = ref('wechat')
 const remark = ref('')
@@ -421,7 +421,7 @@ const loadCoupons = async () => {
 
 const selectBestCoupon = () => {
   if (availableCoupons.value.length === 0) {
-    selectedCouponId.value = null
+    selectedCouponId.value = ''
     return
   }
   

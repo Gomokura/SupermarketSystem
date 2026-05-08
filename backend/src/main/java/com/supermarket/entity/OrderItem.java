@@ -10,21 +10,26 @@ import lombok.Data;
 @TableName("ORDER_ITEMS")
 public class OrderItem {
     @TableId(value = "ITEM_ID", type = IdType.INPUT)
+    @TableField("item_id")
     private Integer itemId;
+    @TableField("order_id")
     private Integer orderId;
+    @TableField("product_id")
     private Integer productId;
+    @TableField("sku_id")
     private Integer skuId;
+    @TableField("product_name")
     private String productName;
-    /** v3 列名 sku_name，这里用字段映射 */
-    @TableField("SKU_NAME")
+    @TableField("sku_name")
     private String skuName;
     private String productImage;
+    @TableField("unit_price")
     private Double unitPrice;
-    /** 成本价快照（毛利分析） */
+    @TableField("cost_price")
     private Double costPrice;
     private Integer quantity;
     private Double subtotal;
-    /** 兼容旧前端字段名：specName -> skuName */
+
     @TableField(exist = false)
     private String specName;
 

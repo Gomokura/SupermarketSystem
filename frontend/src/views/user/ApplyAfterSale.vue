@@ -125,8 +125,8 @@ const handleSubmit = async () => {
       asType: form.asType,
       reason: form.reason,
       refundAmount: Number(form.refundAmount),
-      description: form.description,
-      images: form.images
+      description: form.description || form.reason,
+      images: form.images.join(',')
     })
     ElMessage.success('申请提交成功')
     router.push('/orders')

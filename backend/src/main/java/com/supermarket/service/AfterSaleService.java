@@ -36,20 +36,20 @@ public class AfterSaleService extends ServiceImpl<AfterSaleMapper, AfterSale> {
         if (!"COMPLETED".equals(order.getStatus()) && !"SHIPPING".equals(order.getStatus()))
             throw new BusinessException("当前订单状态不支持售后");
 
-        // 检查是否已有售后申请
+        // 检查是否已有售后申请（排除已拒绝的）
         LambdaQueryWrapper<AfterSale> check = new LambdaQueryWrapper<>();
         check.eq(AfterSale::getOrderId, afterSale.getOrderId())
-             .ne(AfterSale::getStatus, "rejected");
+             .ne(AfterSale::getStatus, "REJECTED");
         if (this.count(check) > 0) throw new BusinessException("该订单已有售后申请");
 
         afterSale.setUserId(userId);
-        afterSale.setStatus("pending");
+        afterSale.setStatus("PENDING");
         afterSale.setCreateTime(new Date());
         afterSale.setAfterSaleId(afterSaleMapper.getNextId());
         this.save(afterSale);
 
         // 更新订单状态
-        order.setStatus("after_sale");
+        order.setStatus("AFTER_SALE");
         orderMapper.updateById(order);
         return Result.success();
     }
@@ -94,11 +94,11 @@ public class AfterSaleService extends ServiceImpl<AfterSaleMapper, AfterSale> {
     public Result<?> handleAfterSale(Integer afterSaleId, String action, String remark) {
         AfterSale as = this.getById(afterSaleId);
         if (as == null) throw new BusinessException(404, "售后申请不存在");
-        if (!"pending".equals(as.getStatus())) throw new BusinessException("该申请已处理");
+        if (!"PENDING".equals(as.getStatus())) throw new BusinessException("该申请已处理");
 
-        if ("approve".equals(action)) {
-            as.setStatus("approved");
-        } else if ("reject".equals(action)) {
+        if ("APPROVE".equals(action)) {
+            as.setStatus("APPROVED");
+        } else if ("REJECT".equals(action)) {
             as.setStatus("rejected");
             // 恢复订单状态
             Order order = orderMapper.selectById(as.getOrderId());
@@ -121,14 +121,14 @@ public class AfterSaleService extends ServiceImpl<AfterSaleMapper, AfterSale> {
     public Result<?> completeRefund(Integer afterSaleId) {
         AfterSale as = this.getById(afterSaleId);
         if (as == null) throw new BusinessException(404, "售后申请不存在");
-        if (!"approved".equals(as.getStatus())) throw new BusinessException("请先审批通过");
-        as.setStatus("completed");
+        if (!"APPROVED".equals(as.getStatus())) throw new BusinessException("请先审批通过");
+        as.setStatus("COMPLETED");
         this.updateById(as);
 
         // 更新订单状态为已退款
         Order order = orderMapper.selectById(as.getOrderId());
         if (order != null) {
-            order.setStatus("refunded");
+            order.setStatus("REFUNDED");
             orderMapper.updateById(order);
         }
         return Result.success();

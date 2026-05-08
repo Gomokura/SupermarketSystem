@@ -11,56 +11,65 @@ import java.util.List;
 @Data
 @TableName("ORDERS")
 public class Order {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "ORDER_ID", type = IdType.INPUT)
+    @TableField("order_id")
     private Integer orderId;
 
+    @TableField("order_no")
     private String orderNo;
+    @TableField("user_id")
     private Integer userId;
-    /** ONLINE / CASHIER */
     private String source;
+    @TableField("address_id")
     private Integer addressId;
-    /** 收货人信息快照（receiver + phone + province/city/district/detail） */
-    @TableField("RECEIVER_SNAPSHOT")
     private String receiverSnapshot;
 
+    @TableField("total_amount")
     private Double totalAmount;
+    @TableField("discount_amount")
     private Double discountAmount;
-    /** 优惠券抵扣金额（明细） */
+    @TableField("coupon_discount")
     private Double couponDiscount;
-    /** 积分抵扣金额（明细） */
+    @TableField("points_deduct_amount")
     private Double pointsDeductAmount;
-    @TableField("FREIGHT_AMOUNT")
+    @TableField("freight_amount")
     private Double freightAmount;
 
     private Double payAmount;
     private String payMethod;
+    @TableField("coupon_id")
     private Integer couponId;
-    /** user_coupons 的 UC_ID（核销用） */
+    @TableField("uc_id")
     private Integer ucId;
+    @TableField("points_used")
     private Integer pointsUsed;
 
-    /** 期望配送时间段（如“明日上午”） */
+    @TableField("delivery_time_slot")
     private String deliveryTimeSlot;
+    @TableField("express_company")
     private String expressCompany;
+    @TableField("express_no")
     private String expressNo;
 
     private String remark;
     private String cancelReason;
     private Double refundAmount;
 
-    /** PENDING_PAY / PAID / PENDING_SHIP / SHIPPING / PENDING_RECEIVED / COMPLETED / CANCELLED / REFUNDED */
     private String status;
-
     private Date payTime;
     private Date shipTime;
     private Date pickupTime;
-    @TableField("DELIVER_TIME")
+    @TableField("deliver_time")
     private Date deliverTime;
     private Date confirmTime;
     private Date completeTime;
+    @TableField("cancel_time")
     private Date cancelTime;
+    @TableField("refund_time")
     private Date refundTime;
+    @TableField("create_time")
     private Date createTime;
+    @TableField("update_time")
     private Date updateTime;
 
     // 非数据库字段

@@ -53,10 +53,10 @@
           <span>库存记录</span>
           <div>
             <el-select v-model="logTypeFilter" placeholder="操作类型" clearable style="width:140px;margin-right:10px" @change="loadLogs">
-              <el-option label="入库" value="IN" />
-              <el-option label="出库" value="OUT" />
-              <el-option label="盘点" value="CHECK" />
+              <el-option label="入库" value="purchase_in" />
+              <el-option label="出库" value="ORDER_OUT" />
               <el-option label="报损" value="DAMAGE" />
+              <el-option label="人工调整" value="MANUAL" />
             </el-select>
             <el-button @click="loadLogs">刷新</el-button>
           </div>
@@ -64,18 +64,27 @@
       </template>
       <el-table :data="logs" border>
         <el-table-column prop="productName" label="商品" min-width="140" />
-        <el-table-column prop="changeType" label="类型" width="90">
+        <el-table-column prop="logType" label="类型" width="90">
           <template #default="{ row }">
-            <el-tag :type="row.changeType === 'IN' ? 'success' : 'danger'" size="small">
-              {{ row.changeType === 'IN' ? '入库' : row.changeType === 'OUT' ? '出库' : row.changeType }}
+            <el-tag :type="logTypeTag(row.logType)" size="small">
+              {{ logTypeText(row.logType) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="quantity" label="数量" width="90" />
-        <el-table-column prop="beforeStock" label="变前库存" width="100" />
-        <el-table-column prop="afterStock" label="变后库存" width="100" />
+        <el-table-column prop="changeAmount" label="变动数量" width="100">
+          <template #default="{ row }">
+            <span :class="row.changeAmount >= 0 ? 'num-up' : 'num-down'">
+              {{ row.changeAmount >= 0 ? '+' : '' }}{{ row.changeAmount }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="balanceAfter" label="变动后库存" width="110" />
         <el-table-column prop="remark" label="备注" />
-        <el-table-column prop="logTime" label="时间" width="170" />
+        <el-table-column prop="createTime" label="时间" width="170">
+          <template #default="{ row }">
+            {{ row.createTime ? new Date(row.createTime).toLocaleString('zh-CN') : '-' }}
+          </template>
+        </el-table-column>
       </el-table>
       <div class="pagination">
         <el-pagination
@@ -93,7 +102,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { adminAPI, productAPI } from '@/api'
+import { adminAPI } from '@/api'
 
 const products = ref([])
 const logs = ref([])
@@ -111,7 +120,8 @@ onMounted(() => {
 
 async function loadProducts() {
   try {
-    const res = await productAPI.getList({ pageNum: 1, pageSize: 500 })
+    // 用管理端商品列表接口（含所有状态商品）
+    const res = await adminAPI.getProducts({ pageNum: 1, pageSize: 500 })
     products.value = res.data?.records || res.data || []
   } catch (e) { console.error(e) }
 }
@@ -125,6 +135,14 @@ async function loadLogs() {
     total.value = res.data?.total || 0
   } catch (e) { console.error(e) }
 }
+
+const logTypeText = (t) => ({
+  purchase_in: '入库', ORDER_OUT: '出库', DAMAGE: '报损', MANUAL: '人工调整'
+}[t] || t || '-')
+
+const logTypeTag = (t) => ({
+  purchase_in: 'success', ORDER_OUT: 'danger', DAMAGE: 'warning', MANUAL: 'info'
+}[t] || 'info')
 
 async function handleWarehousing() {
   if (!warehousingForm.productId) { ElMessage.warning('请选择商品'); return }

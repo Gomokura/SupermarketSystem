@@ -17,6 +17,9 @@ public class PointsService extends ServiceImpl<PointsLogMapper, PointsLog> {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private PointsLogMapper pointsLogMapper;
+
     public Result<?> getMyPoints(Integer userId) {
         User user = userMapper.selectById(userId);
         if (user == null) return Result.error("用户不存在");
@@ -51,7 +54,7 @@ public class PointsService extends ServiceImpl<PointsLogMapper, PointsLog> {
         log.setReason("ADMIN_ADJUST");
         log.setOperatorId(adminId);
         log.setCreateTime(new java.util.Date());
-        if (remark != null) log.setRefId(null);
+        log.setLogId(pointsLogMapper.getNextId());
         this.save(log);
         return Result.success(after);
     }

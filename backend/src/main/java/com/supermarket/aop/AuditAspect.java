@@ -62,6 +62,7 @@ public class AuditAspect {
         Integer targetId = extractLastNumber(uri);
 
         AuditLog auditEntry = new AuditLog();
+        auditEntry.setLogId(auditLogMapper.getNextId());
         auditEntry.setOperatorId(operatorId);
         auditEntry.setOperatorName(operatorName);
         auditEntry.setModule(module);

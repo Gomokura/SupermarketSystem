@@ -26,7 +26,7 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
         task.setCreatorId(creatorId);
         task.setScope(scope);
         task.setCategoryId("category".equals(scope) ? categoryId : null);
-        task.setStatus("pending");
+        task.setStatus("IN_PROGRESS");
         task.setCreateTime(new Date());
         task.setTaskId(stocktakeTaskMapper.getNextId());
         this.save(task);
@@ -45,7 +45,7 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
             item.setId(itemMapper.getNextId());
             itemMapper.insert(item);
         }
-        task.setStatus("counting");
+        task.setStatus("IN_PROGRESS");
         this.updateById(task);
         return Result.success(task);
     }
@@ -78,7 +78,7 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
     public Result<?> inputActual(Integer taskId, List<Map<String, Object>> inputs) {
         StocktakeTask task = this.getById(taskId);
         if (task == null) return Result.error("盘点任务不存在");
-        if (!"counting".equals(task.getStatus())) return Result.error("任务状态不允许录入");
+        if (!"IN_PROGRESS".equals(task.getStatus())) return Result.error("任务状态不允许录入");
         for (Map<String, Object> raw : inputs) {
             Integer itemId = (Integer) raw.get("itemId");
             int actualQty = ((Number) raw.get("actualStock")).intValue();
@@ -95,7 +95,7 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
     public Result<?> submit(Integer taskId, Integer operatorId) {
         StocktakeTask task = this.getById(taskId);
         if (task == null) return Result.error("盘点任务不存在");
-        if (!"counting".equals(task.getStatus())) return Result.error("任务状态不允许提交");
+        if (!"IN_PROGRESS".equals(task.getStatus())) return Result.error("任务状态不允许提交");
 
         LambdaQueryWrapper<StocktakeItem> iw = new LambdaQueryWrapper<>();
         iw.eq(StocktakeItem::getTaskId, taskId);
@@ -112,7 +112,7 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
                     InventoryLog log = new InventoryLog();
                     log.setProductId(item.getProductId());
                     log.setChangeAmount(diff);
-                    log.setLogType(diff > 0 ? "stocktake_up" : "stocktake_down");
+                    log.setLogType(diff > 0 ? "CHECK_ADJUST" : "CHECK_ADJUST");
                     log.setRemark("盘点调整");
                     log.setOperatorId(operatorId);
                     log.setCreateTime(new Date());
@@ -128,7 +128,7 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
                 }
             }
         }
-        task.setStatus("done");
+        task.setStatus("COMPLETED");
         task.setSubmitTime(new Date());
         this.updateById(task);
         Map<String, Object> result = new HashMap<>();

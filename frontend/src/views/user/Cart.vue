@@ -105,8 +105,6 @@ const isAllSelected = computed({
 const totalCount = computed(() => selectedItems.value.reduce((s, i) => s + i.quantity, 0))
 const totalPrice = computed(() => selectedItems.value.reduce((s, i) => s + Math.round(Number(i.price) * 100) * i.quantity, 0) / 100)
 
-onMounted(loadCart)
-
 const loadCart = async () => {
   loading.value = true
   try {
@@ -117,6 +115,8 @@ const loadCart = async () => {
   } catch (e) { console.error(e) }
   finally { loading.value = false }
 }
+
+onMounted(loadCart)
 
 const canSelect = (row) => row.productStatus === 'active' && row.stock > 0
 

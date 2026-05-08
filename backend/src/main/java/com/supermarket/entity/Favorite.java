@@ -12,11 +12,13 @@ import java.util.Date;
 @TableName("FAVORITES")
 public class Favorite {
     @TableId(value = "FAV_ID", type = IdType.INPUT)
+    @TableField("fav_id")
     private Integer favId;
-
+    @TableField("user_id")
     private Integer userId;
+    @TableField("product_id")
     private Integer productId;
-
+    @TableField("create_time")
     private Date createTime;
 
     // 非数据库字段：联表展示商品信息

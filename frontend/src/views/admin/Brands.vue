@@ -98,7 +98,7 @@ const resetForm = () => {
 const loadBrands = async () => {
   loading.value = true
   try {
-    const res = await brandAPI.getList()
+    const res = await brandAPI.getAdminList()
     brands.value = res.data || []
   } finally {
     loading.value = false

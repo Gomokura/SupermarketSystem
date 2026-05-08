@@ -15,13 +15,17 @@ public class UserCoupon {
     
     @TableField(exist = false)
     private Integer userCouponId;
+    @TableField("user_id")
     private Integer userId;
+    @TableField("coupon_id")
     private Integer couponId;
-    /** 状态：unused未使用 / used已使用 / expired已过期 */
     private String status;
-    private Date getTime;         // 数据库字段名 GET_TIME（默认 camelCase → 下划线正确匹配）
+    @TableField("get_time")
+    private Date getTime;
+    @TableField("use_time")
     private Date useTime;
-    private Integer orderId;      // 使用时关联的订单ID
+    @TableField("order_id")
+    private Integer orderId;
 
     // 非数据库字段（联表）
     @TableField(exist = false)

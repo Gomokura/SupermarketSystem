@@ -10,26 +10,29 @@ import java.util.Date;
 @Data
 @TableName("DELIVERY_TASKS")
 public class Delivery {
-    @TableId(type = IdType.INPUT)
-    @TableField("TASK_ID")
+    @TableId(value = "TASK_ID", type = IdType.INPUT)
+    @TableField("task_id")
     private Integer deliveryId;
+    @TableField("order_id")
     private Integer orderId;
+    @TableField("courier_id")
     private Integer courierId;
+    @TableField("assign_time")
+    private Date dispatchTime;
+    private String status;
+    private Date pickupTime;
+    @TableField("deliver_time")
+    private Date doneTime;
+    @TableField("fail_reason")
+    private String failReason;
+
+    // 非数据库字段
     @TableField(exist = false)
     private String address;
     @TableField(exist = false)
     private String receiver;
     @TableField(exist = false)
     private String phone;
-    private String status;        // ASSIGNED/PICKED_UP/DELIVERED/FAILED
-    @TableField(exist = false)
-    private Date dispatchTime;
-    @TableField("DELIVER_TIME")
-    private Date doneTime;
-    private Date pickupTime;
-    @TableField("FAIL_REASON")
-    private String failReason;
-
     @TableField(exist = false)
     private String courierName;
     @TableField(exist = false)

@@ -148,7 +148,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { seckillAPI, productAPI } from '@/api'
+import { seckillAPI, productAPI, adminAPI } from '@/api'
 
 const loading = ref(false)
 const list = ref([])
@@ -301,7 +301,7 @@ const searchProducts = async (keyword) => {
   if (!keyword) { searchResults.value = []; return }
   searchLoading.value = true
   try {
-    const res = await productAPI.getList({ keyword, pageNum: 1, pageSize: 20 })
+    const res = await adminAPI.searchProducts(keyword, 1, 20)
     searchResults.value = res.data?.records || res.data || []
   } catch (e) { /* ignore */ } finally {
     searchLoading.value = false

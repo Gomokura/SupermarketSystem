@@ -9,14 +9,11 @@ import java.util.Date;
 @Data
 @TableName("TOKEN_BLACKLIST")
 public class TokenBlacklist {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "TOKEN", type = IdType.INPUT)
     private String token;
 
     private Integer userId;
-
     private String userType;
-
     private Date blacklistedAt;
-
     private Date expiresAt;
 }

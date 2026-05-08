@@ -20,6 +20,8 @@ const layout = computed(() => {
       return MobileLayout
     case 'fullscreen':
       return FullScreenLayout
+    case 'none':
+      return 'div'
     default:
       return AdminLayout
   }

@@ -141,7 +141,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { stocktakeAPI, productAPI } from '@/api'
+import { stocktakeAPI, adminAPI } from '@/api'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -184,7 +184,7 @@ const openCreate = async () => {
   createFormRef.value?.clearValidate()
   if (categories.value.length === 0) {
     try {
-      const res = await productAPI.getCategoryTree()
+      const res = await adminAPI.getProducts({ categoryId, pageNum: 1, pageSize: 500 })
       categories.value = res.data || []
     } catch (e) { /* ignore */ }
   }

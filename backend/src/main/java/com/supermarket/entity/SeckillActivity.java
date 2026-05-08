@@ -9,15 +9,23 @@ import java.util.Date;
 import java.util.List;
 
 @Data
-@TableName("SECKILL_ACTIVITIES")
+@TableName("ACTIVITIES")
 public class SeckillActivity {
-    @TableId(type = IdType.AUTO)
-    private Integer seckillId;
-    private String seckillName;
+    @TableId(value = "ACTIVITY_ID", type = IdType.INPUT)
+    @TableField("activity_id")
+    private Integer activityId;
+    @TableField("activity_name")
+    private String name;
+    @TableField("activity_type")
+    private String activityType;
+    @TableField("scope_type")
+    private String scopeType;
+    @TableField("start_time")
     private Date startTime;
+    @TableField("end_time")
     private Date endTime;
-    /** 状态：pending未开始 / running进行中 / paused已暂停 / ended已结束 */
     private String status;
+    @TableField("create_time")
     private Date createTime;
 
     // 非数据库字段

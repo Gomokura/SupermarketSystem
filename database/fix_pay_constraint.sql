@@ -1,0 +1,3 @@
+-- 移除 ORDERS 表 pay_method 列的检查约束，解除支付方式限制
+ALTER TABLE ORDERS DROP CONSTRAINT CHKI_ORDER_PAY;
+COMMIT;

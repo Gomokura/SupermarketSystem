@@ -6,8 +6,6 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.util.List;
-
 /**
  * 秒杀活动商品表（数据库：ACTIVITY_PRODUCTS）
  */
@@ -48,4 +46,3 @@ public class SeckillActivityProductModel {
     @TableField(exist = false)
     private Integer remainingStock; // activity_stock - sold_count
 }
-

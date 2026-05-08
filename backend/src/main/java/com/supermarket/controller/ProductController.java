@@ -142,6 +142,27 @@ public class ProductController {
     }
 
     /**
+     * 管理后台商品搜索（用于秒杀/采购/报损等场景选择商品）
+     * GET /products/admin/search?keyword=xx&pageNum=1&pageSize=20
+     */
+    @GetMapping("/admin/search")
+    public Result<?> adminSearchProducts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "20") Integer pageSize) {
+        return productService.adminGetProductList(null, keyword, null, pageNum, pageSize);
+    }
+
+    /**
+     * 管理后台按条码查询商品
+     * GET /products/admin/barcode/{barcode}
+     */
+    @GetMapping("/admin/barcode/{barcode}")
+    public Result<?> adminGetProductByBarcode(@PathVariable String barcode) {
+        return productService.getProductByBarcode(barcode);
+    }
+
+    /**
      * 新增商品
      * POST /products
      */

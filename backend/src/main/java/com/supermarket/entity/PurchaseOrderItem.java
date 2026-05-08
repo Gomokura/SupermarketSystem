@@ -9,13 +9,23 @@ import lombok.Data;
 @Data
 @TableName("PURCHASE_ORDER_ITEMS")
 public class PurchaseOrderItem {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "ITEM_ID", type = IdType.INPUT)
+    @TableField("item_id")
     private Integer itemId;
+    @TableField("po_id")
     private Integer poId;
+    @TableField("product_id")
     private Integer productId;
-    private Integer orderQuantity;   // 采购数量，数据库字段 ORDER_QUANTITY
-    private Integer arrivedQuantity; // 实际收货数量，数据库字段 ARRIVED_QUANTITY
+    @TableField("sku_id")
+    private Integer skuId;
+    @TableField("order_quantity")
+    private Integer orderQuantity;
+    @TableField("arrived_quantity")
+    private Integer arrivedQuantity;
+    @TableField("unit_price")
     private Double unitPrice;
+    @TableField("subtotal")
+    private Double subtotal;
 
     // 非数据库字段
     @TableField(exist = false)

@@ -68,8 +68,9 @@ public class JwtInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 用户侧积分/消息只允许 user 角色
-        if (path.startsWith("/points/") || path.equals("/points") || path.startsWith("/messages/") || path.equals("/messages")) {
+        // 用户侧积分/消息只允许 user 角色（注意：admin/points 是管理端接口，不受此约束）
+        if ((path.startsWith("/points/") || path.equals("/points") || path.startsWith("/messages/") || path.equals("/messages"))
+                && !path.startsWith("/admin/")) {
             if (!"user".equals(role)) {
                 sendForbiddenResponse(response, "无权访问（需要普通用户角色）");
                 return false;

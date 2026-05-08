@@ -350,6 +350,7 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
         log.setOperatorId(operatorId);
         log.setRemark(remark != null ? remark : "手动调整库存");
         log.setCreateTime(new Date());
+        log.setLogId(inventoryLogMapper.getNextId());
         inventoryLogMapper.insert(log);
 
         return Result.success();
@@ -390,6 +391,7 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
         log.setOperatorId(operatorId);
         log.setRemark(remark != null ? remark : "手动调整 SKU 库存");
         log.setCreateTime(new Date());
+        log.setLogId(inventoryLogMapper.getNextId());
         inventoryLogMapper.insert(log);
 
         return Result.success();

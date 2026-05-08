@@ -114,4 +114,12 @@ public class AuthController {
     public Result<?> logout() {
         return Result.success("退出成功");
     }
+
+    // ==================== 临时调试接口：修复用户密码 ====================
+    // POST /auth/debug/fix-pwd
+    // 功能：将指定用户或所有测试用户的密码重置为 123456
+    @PostMapping("/debug/fix-pwd")
+    public Result<?> debugFixPassword(@RequestBody Map<String, Object> body) {
+        return authService.debugFixPassword(body);
+    }
 }

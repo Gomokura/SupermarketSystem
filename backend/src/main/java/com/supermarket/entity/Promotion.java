@@ -11,16 +11,23 @@ import java.util.Date;
 @TableName("ACTIVITIES")
 public class Promotion {
     @TableId(value = "ACTIVITY_ID", type = IdType.INPUT)
+    @TableField("activity_id")
     private Integer activityId;
-    @TableField("ACTIVITY_NAME")
-    private String promoName;
-    @TableField("ACTIVITY_TYPE")
+    @TableField("activity_name")
+    private String title;
+    @TableField("activity_type")
     private String promoType;
-    @TableField(exist = false)
-    private Double conditionVal;
-    @TableField(exist = false)
-    private Double discountVal;
+    @TableField("scope_type")
+    private String scopeType;
+    @TableField("scope_category_id")
+    private Integer scopeCategoryId;
+    @TableField("seckill_stock")
+    private Integer seckillStock;
+    @TableField("start_time")
     private Date startTime;
+    @TableField("end_time")
     private Date endTime;
     private String status;
+    @TableField("create_time")
+    private Date createTime;
 }

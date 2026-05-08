@@ -6,20 +6,28 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.util.Date;
+
 @Data
 @TableName("SUPPLIERS")
 public class Supplier {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "SUPPLIER_ID", type = IdType.INPUT)
+    @TableField("supplier_id")
     private Integer supplierId;
+    @TableField("supplier_name")
     private String supplierName;
-    @TableField("CONTACT_NAME")
-    private String contact;       // 联系人姓名
-    @TableField("CONTACT_PHONE")
-    private String phone;
-    private String status;        // active / inactive
+    @TableField("contact_name")
+    private String contactName;
+    @TableField("contact_phone")
+    private String contactPhone;
     private String email;
     private String address;
+    @TableField("bank_account")
     private String bankAccount;
-    @TableField("PAYMENT_DAYS")
-    private Integer paymentPeriod;
+    private Integer paymentDays;
+    private String status;
+    @TableField("create_time")
+    private Date createTime;
+    @TableField("update_time")
+    private Date updateTime;
 }

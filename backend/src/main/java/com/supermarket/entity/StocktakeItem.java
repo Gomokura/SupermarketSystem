@@ -7,16 +7,23 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 @Data
-@TableName("STOCKTAKE_ITEMS")
+@TableName("INVENTORY_CHECK_ITEMS")
 public class StocktakeItem {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "ITEM_ID", type = IdType.INPUT)
+    @TableField("item_id")
     private Integer id;
+    @TableField("check_id")
     private Integer taskId;
+    @TableField("product_id")
     private Integer productId;
-    private Integer bookStock;    // 账面库存（任务创建时快照）
-    private Integer actualStock;  // 实盘数量
-    private Integer difference;   // 差异=实盘-账面
-    private String diffReason;    // 差异原因
+    @TableField("book_stock")
+    private Integer bookStock;
+    @TableField("actual_stock")
+    private Integer actualStock;
+    @TableField("difference")
+    private Integer difference;
+    @TableField("diff_reason")
+    private String diffReason;
 
     // 非数据库字段
     @TableField(exist = false)

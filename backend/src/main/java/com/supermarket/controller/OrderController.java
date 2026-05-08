@@ -147,6 +147,16 @@ public class OrderController {
     }
 
     /**
+     * 管理后台订单详情（管理员可查看任意订单）
+     * GET /orders/admin/{orderId}
+     */
+    @GetMapping("/admin/{orderId}")
+    public Result<?> adminGetOrderDetail(
+            @PathVariable Integer orderId) {
+        return orderService.adminGetOrderDetail(orderId);
+    }
+
+    /**
      * 管理员发货（带快递信息）
      * PUT /orders/{orderId}/ship
      * body: { "company": "顺丰", "trackingNo": "SF123" }
@@ -182,6 +192,20 @@ public class OrderController {
         return orderService.adminCancelOrder(orderId, userId, reason);
     }
 
+    /**
+     * 管理员修改收货地址
+     * PUT /orders/{orderId}/address
+     * body: { "name": "...", "phone": "...", "address": "..." }
+     */
+    @PutMapping("/{orderId}/address")
+    public Result<?> updateOrderAddress(
+            @PathVariable Integer orderId,
+            @RequestAttribute Integer adminId,
+            @RequestBody Map<String, String> body) {
+        return orderService.updateOrderAddress(orderId, adminId,
+                body.get("name"), body.get("phone"), body.get("address"));
+    }
+
     // ==================== 收银台端 ====================
     /** C-46 再次购买：将历史订单商品加入购物车 */
     @PostMapping("/{orderId}/reorder")
@@ -214,6 +238,6 @@ public class OrderController {
             items.add(item);
         }
 
-        return orderService.cashierCreateOrder(userId, items, payMethod, receivedAmount);
+        return orderService.cashierCreateOrder(userId, userId, items, payMethod, receivedAmount);
     }
 }

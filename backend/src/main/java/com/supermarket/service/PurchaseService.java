@@ -129,6 +129,7 @@ public class PurchaseService extends ServiceImpl<PurchaseOrderMapper, PurchaseOr
                 log.setRemark("采购入库 " + po.getPoNo());
                 log.setOperatorId(operatorId);
                 log.setCreateTime(new Date());
+                log.setLogId(inventoryLogMapper.getNextId());
                 inventoryLogMapper.insert(log);
             }
         }

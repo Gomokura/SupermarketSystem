@@ -125,14 +125,17 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
         return Result.success("注册成功");
     }
 
-    /** 发放新人优惠券 */
+        /** 发放新人优惠券 */
     private void grantNewUserCoupons(Integer userId) {
         try {
             LambdaQueryWrapper<Coupon> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Coupon::getStatus, "active");
-            wrapper.eq(Coupon::getCouponType, "new_user");
+            // 新人券：按名称关键字过滤（demo数据: "新人满50减10"）
+            wrapper.and(w -> w.like(Coupon::getCouponName, "新人")
+                    .or().like(Coupon::getCouponName, "新用户")
+                    .or().like(Coupon::getCouponName, "新会员"));
             List<Coupon> newUserCoupons = couponMapper.selectList(wrapper);
-            
+
             Date now = new Date();
             for (Coupon coupon : newUserCoupons) {
                 // 检查有效期
@@ -317,5 +320,35 @@ public class AuthService extends ServiceImpl<UserMapper, User> {
         data.put("points", user.getPoints());
         data.put("availableCouponCount", couponCount);
         return Result.success(data);
+    }
+
+    // ==================== 临时调试：修复用户密码 ====================
+    // POST /auth/debug/fix-pwd
+    public Result<?> debugFixPassword(Map<String, Object> params) {
+        String phone = (String) params.get("phone");
+        String username = (String) params.get("username");
+        String newPwd = (String) params.getOrDefault("password", "123456");
+        String encoded = passwordEncoder.encode(newPwd);
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        if (phone != null && !phone.isEmpty()) {
+            wrapper.eq(User::getPhone, phone);
+        } else if (username != null && !username.isEmpty()) {
+            wrapper.eq(User::getUsername, username);
+        } else {
+            // 修复所有用户
+            List<User> users = this.list();
+            int count = 0;
+            for (User u : users) {
+                u.setPassword(encoded);
+                this.updateById(u);
+                count++;
+            }
+            return Result.success("已重置 " + count + " 个用户密码为: " + newPwd);
+        }
+        User user = this.getOne(wrapper);
+        if (user == null) return Result.error("用户不存在");
+        user.setPassword(encoded);
+        this.updateById(user);
+        return Result.success("已重置用户 " + (phone != null ? phone : username) + " 的密码为: " + newPwd);
     }
 }

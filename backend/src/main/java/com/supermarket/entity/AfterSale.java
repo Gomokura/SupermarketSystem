@@ -12,26 +12,29 @@ import java.util.Date;
 public class AfterSale {
     @TableId(value = "AS_ID", type = IdType.INPUT)
     private Integer afterSaleId;
-    /** 售后单号 */
+    @TableField("as_no")
     private String asNo;
+    @TableField("order_id")
     private Integer orderId;
+    @TableField("item_id")
+    private Integer orderItemId;
+    @TableField("user_id")
     private Integer userId;
-    /** v3: REFUND / EXCHANGE */
-    @TableField("AS_TYPE")
     private String asType;
     private String reason;
-    /** 凭证图片URL逗号分隔 */
     private String images;
-    /** 退哪个订单商品（NULL=整单退） */
+    @TableField("item_id")
     private Integer itemId;
     private String status;
     private Double refundAmount;
-    /** 管理员备注，数据库字段 ADMIN_REMARK */
     @TableField("ADMIN_REMARK")
     private String adminRemark;
+    @TableField("handler_id")
     private Integer handlerId;
-    private Date handleTime;
+    @TableField("create_time")
     private Date createTime;
+    @TableField("handle_time")
+    private Date handleTime;
 
     // 非数据库字段
     @TableField(exist = false)

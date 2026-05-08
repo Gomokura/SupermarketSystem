@@ -234,7 +234,7 @@ const searchProducts = async (keyword) => {
   if (!keyword) { searchResults.value = []; return }
   searchLoading.value = true
   try {
-    const res = await productAPI.getList({ keyword, pageNum: 1, pageSize: 20 })
+    const res = await adminAPI.searchProducts(keyword, 1, 20)
     const list = res.data?.records || res.data || []
     // 合并库存信息
     try {

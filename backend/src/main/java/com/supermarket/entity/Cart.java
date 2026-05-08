@@ -12,16 +12,21 @@ import java.util.Date;
 @TableName("CART")
 @KeySequence("SEQ_CART")
 public class Cart {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "CART_ID", type = IdType.INPUT)
+    @TableField("cart_id")
     private Integer cartId;
+    @TableField("user_id")
     private Integer userId;
+    @TableField("product_id")
     private Integer productId;
+    @TableField("sku_id")
+    private Integer skuId;
+    @TableField("quantity")
     private Integer quantity;
-    private Date addTime;         // 加入时间
-
-    // 新增字段
-    private Integer skuId;        // 选择的SKU ID
-    private Integer isChecked;    // 是否勾选参与结算 1/0
+    @TableField("add_time")
+    private Date addTime;
+    @TableField("is_checked")
+    private Integer isChecked;
 
     // 非数据库字段（联表用）
     @TableField(exist = false)

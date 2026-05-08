@@ -153,9 +153,6 @@ const currentPrice = computed(() => selectedSku.value?.price ?? product.value.pr
 const currentStock = computed(() => selectedSku.value?.stock ?? product.value.stock ?? 0)
 const isLowStock = computed(() => currentStock.value > 0 && currentStock.value <= (product.value.warningStock || 10))
 
-onMounted(loadProduct)
-watch(() => route.params.id, loadProduct)
-
 const loadProduct = async () => {
   const id = route.params.id
   if (!id) return
@@ -182,6 +179,9 @@ const loadProduct = async () => {
   } catch (e) { console.error(e) }
   finally { loading.value = false }
 }
+
+onMounted(loadProduct)
+watch(() => route.params.id, loadProduct)
 
 const toggleFavorite = async () => {
   const token = localStorage.getItem('token')

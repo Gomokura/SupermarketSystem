@@ -9,25 +9,23 @@ import lombok.Data;
 @Data
 @TableName("PRODUCT_SKUS")
 public class ProductSku {
-    @TableId(type = IdType.AUTO)
+    @TableId(value = "SKU_ID", type = IdType.INPUT)
+    @TableField("sku_id")
     private Integer skuId;
+    @TableField("product_id")
     private Integer productId;
-    /** 规格名称，如"500ml/瓶"，对应数据库 SKU_NAME */
+    @TableField("sku_name")
     private String skuName;
-    /** 规格属性 JSON，如 {"颜色":"红","容量":"500ml"}，对应数据库 SKU_SPEC */
+    @TableField("sku_spec")
     private String skuSpec;
-    /** SKU 售价，对应数据库 PRICE */
     private Double price;
-    /** SKU 划线价，对应数据库 ORIGINAL_PRICE */
+    @TableField("original_price")
     private Double originalPrice;
-    /** SKU 成本价，对应数据库 COST_PRICE */
+    @TableField("cost_price")
     private Double costPrice;
-    /** SKU 独立库存，对应数据库 STOCK */
     private Integer stock;
-    /** SKU 级条码，对应数据库 BARCODE */
     private String barcode;
-    /** 显示排序，对应数据库 SORT_ORDER */
+    @TableField("sort_order")
     private Integer sortOrder;
-    /** active / off_shelf */
     private String status;
 }

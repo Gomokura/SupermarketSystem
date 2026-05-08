@@ -16,7 +16,7 @@
         <el-form-item label="状态">
           <el-select v-model="filter.status" clearable placeholder="全部" style="width:120px">
             <el-option label="待付款" value="PENDING_PAY" />
-            <el-option label="待发货" value="PAID" />
+            <el-option label="待发货" value="PENDING_SHIP" />
             <el-option label="配送中" value="SHIPPING" />
             <el-option label="待收货" value="PENDING_RECEIVED" />
             <el-option label="已完成" value="COMPLETED" />
@@ -69,9 +69,9 @@
           <template #default="{ row }">
             <el-button size="small" @click="viewDetail(row)">详情</el-button>
             <!-- B-18 分配配送员 -->
-            <el-button v-if="row.status === 'PAID'" size="small" type="primary" @click="openAssign(row)">分配配送员</el-button>
+            <el-button v-if="row.status === 'PENDING_SHIP'" size="small" type="primary" @click="openAssign(row)">分配配送员</el-button>
             <!-- B-21 强制取消 -->
-            <el-button v-if="['PENDING_PAY','PAID'].includes(row.status)" size="small" type="danger" @click="forceCancel(row)">强制取消</el-button>
+            <el-button v-if="['PENDING_PAY','PAID','PENDING_SHIP'].includes(row.status)" size="small" type="danger" @click="forceCancel(row)">强制取消</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -92,7 +92,7 @@
           </el-descriptions-item>
           <el-descriptions-item label="用户">{{ currentOrder.username }}</el-descriptions-item>
           <el-descriptions-item label="手机号">{{ currentOrder.phone }}</el-descriptions-item>
-          <el-descriptions-item label="收货地址" :span="2">{{ currentOrder.address }}</el-descriptions-item>
+          <el-descriptions-item label="收货地址" :span="2">{{ currentOrder.receiverAddress }}</el-descriptions-item>
           <el-descriptions-item label="支付方式">{{ currentOrder.payMethod }}</el-descriptions-item>
           <el-descriptions-item label="实付金额">
             <span class="amount">¥{{ currentOrder.payAmount || currentOrder.totalAmount }}</span>
@@ -239,8 +239,8 @@ const loadCouriers = async () => {
 
 const statusText = (status) => {
   const map = {
-    PENDING_PAY: '待付款', PAID: '待发货', SHIPPING: '配送中',
-    PENDING_RECEIVED: '待收货', COMPLETED: '已完成',
+    PENDING_PAY: '待付款', PENDING_SHIP: '待发货', PAID: '待发货',
+    SHIPPING: '配送中', PENDING_RECEIVED: '待收货', COMPLETED: '已完成',
     CANCELLED: '已取消', REFUNDED: '已退款'
   }
   return map[status] || status
@@ -256,7 +256,7 @@ const formatDate = (d) => d ? new Date(d).toLocaleString('zh-CN') : '-'
 
 const viewDetail = async (row) => {
   try {
-    const res = await orderAPI.getDetail(row.orderId)
+    const res = await adminAPI.getOrderDetail(row.orderId)
     currentOrder.value = res.data || row
     shippingForm.company = currentOrder.value.shippingCompany || ''
     shippingForm.trackingNo = currentOrder.value.trackingNo || ''

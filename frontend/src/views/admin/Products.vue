@@ -238,7 +238,7 @@ async function loadProducts() {
     if (query.keyword) params.keyword = query.keyword
     if (query.categoryId) params.categoryId = query.categoryId
     if (query.status) params.status = query.status
-    const res = await productAPI.getList(params)
+    const res = await adminAPI.getProducts(params)
     products.value = res.data?.records || res.data || []
     total.value = res.data?.total || 0
   } finally { loading.value = false }
@@ -253,7 +253,7 @@ async function loadCategories() {
 
 async function loadBrands() {
   try {
-    const res = await brandAPI.getList({ pageSize: 200 })
+    const res = await brandAPI.getAdminList({ pageSize: 200 })
     brands.value = res.data?.records || res.data || []
   } catch (e) { console.error(e) }
 }

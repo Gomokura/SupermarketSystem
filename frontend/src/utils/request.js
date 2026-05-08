@@ -1,19 +1,27 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
+import { useUserStore } from '@/stores/user'
 
 const request = axios.create({
   baseURL: '/api',
   timeout: 10000
 })
 
-const clearAuthStorage = () => {
+const clearAllAuthState = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('adminToken')
   localStorage.removeItem('courierToken')
   localStorage.removeItem('user')
   localStorage.removeItem('cart')
   localStorage.removeItem('searchHistory')
+  localStorage.removeItem('supermarket-user')
+  const userStore = useUserStore()
+  userStore.token = ''
+  userStore.userInfo = null
+  userStore.currentRole = ''
+  userStore.adminToken = ''
+  userStore.courierToken = ''
 }
 
 request.interceptors.request.use(
@@ -51,7 +59,7 @@ request.interceptors.response.use(
   },
   error => {
     if (error.response?.status === 401) {
-      clearAuthStorage()
+      clearAllAuthState()
       const msg = error.response?.data?.message || '登录已过期，请重新登录'
       ElMessage.error(msg)
       const path = error.config?.url || ''

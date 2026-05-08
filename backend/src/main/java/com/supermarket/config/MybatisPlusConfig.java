@@ -12,7 +12,6 @@ public class MybatisPlusConfig {
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        // Oracle 分页插件
         PaginationInnerInterceptor paginationInterceptor = new PaginationInnerInterceptor(DbType.ORACLE);
         paginationInterceptor.setMaxLimit(500L);
         interceptor.addInnerInterceptor(paginationInterceptor);

@@ -11,19 +11,22 @@ import java.util.Date;
 @Data
 @TableName("DELIVERY_PERSONS")
 public class Courier {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "COURIER_ID", type = IdType.INPUT)
+    @TableField("courier_id")
     private Integer courierId;
-    @TableField("REAL_NAME")
+    @TableField("real_name")
     private String courierName;
     private String phone;
     @JsonIgnore
     private String password;
-    private String status;        // active / inactive
-    @TableField(exist = false)
-    private Integer isDisabled;   // 非数据库字段，兼容旧接口
-    @TableField(exist = false)
-    private Integer todayCount;   // 非数据库字段
-    @TableField("TOTAL_DELIVERY_COUNT")
+    @TableField("total_delivery_count")
     private Integer totalCount;
+    private String status;
     private Date createTime;
+
+    // 非数据库字段
+    @TableField(exist = false)
+    private Integer todayCount;
+    @TableField(exist = false)
+    private Integer isDisabled;
 }

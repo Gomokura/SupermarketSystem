@@ -10,16 +10,19 @@ import java.util.Date;
 @Data
 @TableName("BANNERS")
 public class Banner {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "BANNER_ID", type = IdType.INPUT)
+    @TableField("banner_id")
     private Integer bannerId;
+    @TableField("image_url")
     private String imageUrl;
-    /** 跳转类型：product商品 / category分类 / activity活动 / none无 */
+    @TableField("link_type")
     private String linkType;
-    @TableField("LINK_ID")
-    private String linkTarget;    // 跳转目标ID，数据库字段 LINK_ID
+    @TableField("link_id")
+    private String linkTarget;
+    @TableField("sort_order")
     private Integer sortOrder;
-    @TableField("STATUS")
-    private String status;        // active/inactive，数据库字段 STATUS（用 status 代替 is_active）
+    private String status;
+    @TableField("create_time")
     private Date createTime;
 
     // 非数据库字段（兼容旧接口）

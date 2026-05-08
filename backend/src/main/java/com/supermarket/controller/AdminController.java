@@ -73,8 +73,9 @@ public class AdminController {
     @PutMapping("/users/{userId}/status")
     public Result<?> updateUserStatus(
             @PathVariable Integer userId,
-            @RequestParam String status) {
-        return adminService.updateUserStatus(userId, status);
+            @RequestParam String status,
+            @RequestParam(required = false) String reason) {
+        return adminService.updateUserStatus(userId, status, reason);
     }
 
     // ==================== 统计 ====================

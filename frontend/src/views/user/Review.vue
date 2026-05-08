@@ -6,7 +6,7 @@
       <el-form ref="formRef" :model="reviewForm" label-width="100px">
         <div v-for="(item, index) in order.items" :key="item.productId" style="margin-bottom: 30px; border-bottom: 1px solid #f0f0f0; padding-bottom: 20px;">
           <div style="display:flex; margin-bottom: 15px;">
-            <el-image :src="item.productImage" style="width: 80px; height: 80px; border-radius: 4px; margin-right: 15px" />
+              <el-image :src="item.coverImage || item.productImage" style="width: 80px; height: 80px; border-radius: 4px; margin-right: 15px" />
             <div>
               <p style="font-weight:bold">{{ item.productName }}</p>
               <p style="color:#999;font-size:13px">价格: ￥{{ item.unitPrice }} x {{ item.quantity }}</p>

@@ -207,7 +207,7 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
             orderItems.add(it);
         }
         // 2) 创建收银订单（订单侧不做会员券抵扣，券抵扣走 cashier_records 展示；库存仍以订单出库为准）
-        Result<?> orderRet = orderService.cashierCreateOrder(cashierId, orderItems, payMethod, receivedAmount);
+        Result<?> orderRet = orderService.cashierCreateOrder(cashierId, userId, orderItems, payMethod, receivedAmount);
         if (orderRet.getCode() != 200) {
             throw new BusinessException(orderRet.getMessage());
         }

@@ -6,16 +6,27 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.util.Date;
+import java.util.List;
+
 @Data
-@TableName("SECKILL_PRODUCTS")
+@TableName("ACTIVITY_PRODUCTS")
 public class SeckillProduct {
-    @TableId(type = IdType.AUTO)
+    @TableId(value = "ID", type = IdType.INPUT)
+    @TableField("id")
     private Integer id;
-    private Integer seckillId;
+    @TableField("activity_id")
+    private Integer activityId;
+    @TableField("product_id")
     private Integer productId;
-    private Double seckillPrice;  // 秒杀价
-    private Integer seckillStock; // 秒杀库存
-    private Integer soldCount;    // 已售数量
+    @TableField("sku_id")
+    private Integer skuId;
+    @TableField("activity_price")
+    private Double seckillPrice;
+    @TableField("activity_stock")
+    private Integer stock;
+    @TableField("sold_count")
+    private Integer soldCount;
 
     // 非数据库字段
     @TableField(exist = false)

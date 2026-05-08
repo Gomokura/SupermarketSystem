@@ -21,15 +21,14 @@
       </el-descriptions>
     </el-card>
 
-    <el-card v-if="order && order.delivery" class="delivery-card">
+    <el-card v-if="order && (order.pickupTime || order.deliverTime)" class="delivery-card">
       <template #header>
         <span>配送信息</span>
       </template>
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="配送员">{{ order.delivery.courierName || '正在分配' }}</el-descriptions-item>
-        <el-descriptions-item label="联系电话" v-if="order.delivery.courierPhone">{{ order.delivery.courierPhone }}</el-descriptions-item>
-        <el-descriptions-item label="配送状态">{{ getDeliveryStatusText(order.delivery.status) }}</el-descriptions-item>
-        <el-descriptions-item label="发货时间" v-if="order.delivery.pickupTime">{{ formatDate(order.delivery.pickupTime) }}</el-descriptions-item>
+        <el-descriptions-item label="配送状态">{{ getDeliveryStatusText(order) }}</el-descriptions-item>
+        <el-descriptions-item label="发货时间" v-if="order.pickupTime">{{ formatDate(order.pickupTime) }}</el-descriptions-item>
+        <el-descriptions-item label="送达时间" v-if="order.deliverTime">{{ formatDate(order.deliverTime) }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
 
@@ -39,6 +38,7 @@
       </template>
       <el-table :data="items" border>
         <el-table-column prop="productName" label="商品名称" />
+        <el-table-column prop="skuName" label="规格" width="100" />
         <el-table-column prop="unitPrice" label="单价" width="120">
           <template #default="{ row }">￥{{ row.unitPrice }}</template>
         </el-table-column>
@@ -54,10 +54,10 @@
     <div class="actions">
       <el-button @click="goBack">返回列表</el-button>
       <template v-if="order">
-        <el-button v-if="order.status === 'pending'" type="primary" @click="handlePay">去支付</el-button>
-        <el-button v-if="['pending', 'paid'].includes(order.status)" type="danger" @click="handleCancel">取消订单</el-button>
-        <el-button v-if="order.status === 'shipped'" type="success" @click="handleConfirm">确认收货</el-button>
-        <template v-if="order.status === 'completed'">
+        <el-button v-if="order.status === 'PENDING_PAY'" type="primary" @click="handlePay">去支付</el-button>
+        <el-button v-if="['PENDING_PAY', 'PAID'].includes(order.status)" type="danger" @click="handleCancel">取消订单</el-button>
+        <el-button v-if="['SHIPPING', 'PENDING_RECEIVED'].includes(order.status)" type="success" @click="handleConfirm">确认收货</el-button>
+        <template v-if="order.status === 'COMPLETED'">
           <el-button type="primary" plain @click="handleReorder">再次购买</el-button>
           <el-button type="warning" plain @click="goAfterSale">申请售后</el-button>
           <el-button type="success" plain @click="goReview" v-if="!order.isReviewed">去评价</el-button>
@@ -101,34 +101,43 @@ const formatDate = (date) => {
 
 const getStatusType = (status) => {
   const map = {
-    pending: 'warning',
-    paid: 'info',
-    shipped: 'primary',
-    completed: 'success',
-    cancelled: 'info'
+    PENDING_PAY: 'warning',
+    PAID: 'info',
+    PENDING_SHIP: 'info',
+    SHIPPING: 'primary',
+    PENDING_RECEIVE: 'warning',
+    PENDING_RECEIVED: 'warning',
+    COMPLETED: 'success',
+    CANCELLED: 'info',
+    REFUNDED: 'info'
   }
   return map[status] || 'info'
 }
 
 const getStatusText = (status) => {
   const map = {
-    pending: '待付款',
-    paid: '待发货',
-    shipped: '待收货',
-    completed: '已完成',
-    cancelled: '已取消'
+    PENDING_PAY: '待付款',
+    PAID: '待发货',
+    PENDING_SHIP: '待发货',
+    SHIPPING: '配送中',
+    PENDING_RECEIVE: '待收货',
+    PENDING_RECEIVED: '待收货',
+    COMPLETED: '已完成',
+    CANCELLED: '已取消',
+    REFUNDED: '已退款'
   }
   return map[status] || status
 }
 
-const getDeliveryStatusText = (status) => {
+const getDeliveryStatusText = (order) => {
   const map = {
-    pending: '待取件',
-    delivering: '配送中',
-    delivered: '已送达',
-    failed: '配送失败'
+    PENDING_PAY: '待付款',
+    PENDING_SHIP: '待发货',
+    SHIPPING: '配送中',
+    PENDING_RECEIVED: '待收货',
+    COMPLETED: '已完成',
   }
-  return map[status] || status
+  return map[order.status] || order.status || '-'
 }
 
 const handlePay = async () => {

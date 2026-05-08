@@ -10,12 +10,25 @@ import java.util.Date;
 @Data
 @TableName("DAMAGE_RECORDS")
 public class DamageRecord {
-    @TableId(value = "DAMAGE_ID", type = IdType.INPUT)  // 数据库主键名为 DAMAGE_ID
+    @TableId(value = "DAMAGE_ID", type = IdType.INPUT)
+    @TableField("damage_id")
     private Integer damageId;
+    @TableField("damage_no")
+    private String damageNo;
+    @TableField("product_id")
     private Integer productId;
+    @TableField("sku_id")
+    private Integer skuId;
     private Integer quantity;
-    private String reason;        // 破损/过期/其他
+    @TableField("unit_cost")
+    private Double unitCost;
+    @TableField("total_cost")
+    private Double totalCost;
+    private String reason;
+    @TableField("operator_id")
     private Integer operatorId;
+    private String status;
+    @TableField("create_time")
     private Date createTime;
 
     // 非数据库字段

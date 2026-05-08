@@ -2,6 +2,7 @@ package com.supermarket.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -11,17 +12,20 @@ import java.util.Date;
 @Data
 @TableName("ADMIN_USERS")
 public class Admin {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "ADMIN_ID", type = IdType.INPUT)
+    @TableField("admin_id")
     private Integer adminId;
     private String username;
     @JsonIgnore
     private String password;
+    @TableField("real_name")
     private String realName;
-    /** 角色：SUPER_ADMIN/MANAGER/PRODUCT/FINANCE/SERVICE/WAREHOUSE/CASHIER */
     private String role;
+    @TableField("phone")
     private String phone;
-    private String status;        // active / inactive
-    @TableField(exist = false)
+    private String status;
+    @TableField("last_login")
     private Date lastLogin;
+    @TableField("create_time")
     private Date createTime;
 }

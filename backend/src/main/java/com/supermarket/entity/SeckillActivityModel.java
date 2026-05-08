@@ -37,6 +37,8 @@ public class SeckillActivityModel {
     @TableField("SECKILL_STOCK")
     private Integer seckillStock;
 
+    private Date createTime;
+
     // 非数据库字段：返回前端秒杀活动展示状态（pending/running/paused/ended）
     @TableField(exist = false)
     private String currentState;
@@ -44,4 +46,3 @@ public class SeckillActivityModel {
     @TableField(exist = false)
     private List<SeckillActivityProductModel> products;
 }
-

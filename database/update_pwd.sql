@@ -1,0 +1,2 @@
+UPDATE USERS SET password = '$2b$10$CFve8AHyZlr9XDNYVL4HzODkpRwf7c73qYajwi3kCfQUZbMUkQ9Ge' WHERE user_id = 1001;
+COMMIT;

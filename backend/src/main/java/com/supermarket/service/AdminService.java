@@ -115,10 +115,13 @@ public class AdminService {
         return Result.success(page);
     }
 
-    public Result<?> updateUserStatus(Integer userId, String status) {
+    public Result<?> updateUserStatus(Integer userId, String status, String reason) {
         User user = userMapper.selectById(userId);
         if (user == null) throw new BusinessException(404, "用户不存在");
         user.setStatus(status);
+        if ("banned".equals(status) && reason != null && !reason.isEmpty()) {
+            user.setBanReason(reason);
+        }
         userMapper.updateById(user);
         return Result.success();
     }
@@ -187,6 +190,7 @@ public class AdminService {
         log.setOperatorId(operatorId);
         log.setRemark(remark);
         log.setCreateTime(new Date());
+        log.setLogId(inventoryLogMapper.getNextId());
         inventoryLogMapper.insert(log);
         return Result.success();
     }
@@ -202,12 +206,13 @@ public class AdminService {
 
         InventoryLog log = new InventoryLog();
         log.setProductId(productId);
-        log.setLogType("damage");
+        log.setLogType("MANUAL");
         log.setChangeAmount(-quantity);
         log.setBalanceAfter(product.getStock());
         log.setOperatorId(operatorId);
         log.setRemark(remark);
         log.setCreateTime(new Date());
+        log.setLogId(inventoryLogMapper.getNextId());
         inventoryLogMapper.insert(log);
         return Result.success();
     }
@@ -296,13 +301,13 @@ public class AdminService {
             task.setTaskId(deliveryTaskMapper.getNextId());
             task.setOrderId(order.getOrderId());
             task.setCourierId(courierId);
-            task.setStatus("pending");
+            task.setStatus("ASSIGNED");
             task.setAssignTime(new Date());
             deliveryTaskMapper.insert(task);
         } else {
             order = orderMapper.selectById(task.getOrderId());
             task.setCourierId(courierId);
-            task.setStatus("pending");
+            task.setStatus("ASSIGNED");
             task.setAssignTime(new Date());
             deliveryTaskMapper.updateById(task);
         }
@@ -317,6 +322,7 @@ public class AdminService {
 
             // 状态日志（状态不变，to=from）
             OrderStatusLog log = new OrderStatusLog();
+            log.setLogId(orderStatusLogMapper.getNextId());
             log.setOrderId(order.getOrderId());
             log.setFromStatus(order.getStatus());
             log.setToStatus(order.getStatus());
@@ -350,6 +356,9 @@ public class AdminService {
 
     @Transactional
     public Result<?> createPromotion(Promotion promotion) {
+        if (promotion.getActivityId() == null) {
+            promotion.setActivityId(promotionMapper.getNextId());
+        }
         promotionMapper.insert(promotion);
         return Result.success();
     }
@@ -371,7 +380,7 @@ public class AdminService {
         LambdaQueryWrapper<Supplier> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(keyword)) {
             wrapper.like(Supplier::getSupplierName, keyword)
-                   .or().like(Supplier::getContact, keyword);
+                   .or().like(Supplier::getContactName, keyword);
         }
         wrapper.orderByAsc(Supplier::getSupplierId);
         List<Supplier> list = supplierMapper.selectList(wrapper);
@@ -481,6 +490,7 @@ public class AdminService {
                     log.setOperatorId(operatorId);
                     log.setRemark("采购入库，单号：" + po.getPoNo());
                     log.setCreateTime(new Date());
+                    log.setLogId(inventoryLogMapper.getNextId());
                     inventoryLogMapper.insert(log);
                 }
             }
@@ -941,7 +951,7 @@ public class AdminService {
         if (courierMapper.selectCount(new LambdaQueryWrapper<Courier>().eq(Courier::getPhone, courier.getPhone())) > 0) {
             throw new BusinessException("phone already exists");
         }
-        courier.setPassword(courier.getPassword());
+        courier.setPassword(passwordEncoder.encode(courier.getPassword()));
         if (!StringUtils.hasText(courier.getStatus())) courier.setStatus("active");
         if (courier.getTotalCount() == null) courier.setTotalCount(0);
         courier.setCreateTime(new Date());
@@ -976,6 +986,7 @@ public class AdminService {
         msg.setRefId(refId);
         msg.setIsRead(0);
         msg.setCreateTime(new Date());
+        msg.setMessageId(messageMapper.getNextId());
         messageMapper.insert(msg);
         return Result.success();
     }

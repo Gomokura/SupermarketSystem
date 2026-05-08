@@ -208,6 +208,9 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         order.setDiscountAmount(round2(calc.couponDiscount + calc.pointsDeductAmount));
         order.setPayAmount(round2(totalAmount - calc.couponDiscount - calc.pointsDeductAmount));
         String payMethod = paymentMethod != null ? paymentMethod.toUpperCase() : "ALIPAY";
+        if (!payMethod.matches("^(MOCK|CASH|MOCK_CARD|WECHAT|ALIPAY)$")) {
+            payMethod = "MOCK";
+        }
         order.setPayMethod(payMethod);
         order.setRemark(remark);
         order.setDeliveryTimeSlot(deliveryTimeSlot);
@@ -243,17 +246,20 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
             orderItem.setItemId(orderItemMapper.getNextId());
             orderItemMapper.insert(orderItem);
 
-            // ✅ 扣库存
+            // ✅ 扣库存：只操作实际存储库存的表
             if (sku != null) {
-                // 有 SKU：优先扣 SKU 独立库存
+                // 有 SKU：只扣 SKU 独立库存（主表 PRODUCTS.stock 仅在无SKU时使用）
+                if (sku.getStock() < item.getQuantity()) {
+                    return Result.error("SKU「" + sku.getSkuName() + "」库存不足");
+                }
                 int newSkuStock = sku.getStock() - item.getQuantity();
                 sku.setStock(newSkuStock);
                 productSkuMapper.updateById(sku);
-
-                // 同步汇总主表 stock（减少对应数量）
-                product.setStock(product.getStock() - item.getQuantity());
             } else {
                 // 无 SKU：只扣主表
+                if (product.getStock() < item.getQuantity()) {
+                    return Result.error("商品「" + product.getProductName() + "」库存不足");
+                }
                 product.setStock(product.getStock() - item.getQuantity());
             }
             product.setSalesCount(product.getSalesCount() + item.getQuantity());
@@ -320,7 +326,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         Order order = this.getById(orderId);
         if (order == null) return Result.error("订单不存在");
         if (!order.getUserId().equals(userId)) return Result.error("无权操作此订单");
-        if (!"PENDING_PAY".equals(order.getStatus()) && !"PENDING_SHIP".equals(order.getStatus()))
+        if (!"PENDING_PAY".equals(order.getStatus()) && !"PAID".equals(order.getStatus()) && !"PENDING_SHIP".equals(order.getStatus()))
             return Result.error("当前状态（" + order.getStatus() + "）无法取消");
 
         restoreStock(order, userId);
@@ -366,6 +372,32 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         if (userId != null) wrapper.eq(Order::getUserId, userId);
         wrapper.orderByDesc(Order::getCreateTime);
         return Result.success(this.page(new Page<>(pageNum, pageSize), wrapper));
+    }
+
+    /** 管理员查看订单详情（可查看任意订单） */
+    public Result<?> adminGetOrderDetail(Integer orderId) {
+        Order order = this.getById(orderId);
+        if (order == null) return Result.error("订单不存在");
+        LambdaQueryWrapper<OrderItem> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OrderItem::getOrderId, orderId);
+        order.setItems(orderItemMapper.selectList(wrapper));
+
+        if (order.getReceiverSnapshot() != null && !order.getReceiverSnapshot().isEmpty()) {
+            String[] parts = order.getReceiverSnapshot().split(" ");
+            if (parts.length >= 2) {
+                order.setReceiverName(parts[0]);
+                order.setReceiverPhone(parts[1]);
+                if (parts.length >= 3) order.setReceiverAddress(parts[2]);
+            }
+        }
+
+        DeliveryTask task = deliveryTaskMapper.selectOne(new LambdaQueryWrapper<DeliveryTask>()
+                .eq(DeliveryTask::getOrderId, orderId));
+        if (task != null) {
+            order.setPickupTime(task.getPickupTime());
+            order.setDeliverTime(task.getDeliverTime());
+        }
+        return Result.success(order);
     }
 
     /** 管理员发货（paid→shipped） */
@@ -439,6 +471,26 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         return Result.success("订单已取消");
     }
 
+    /** 管理员修改收货地址 */
+    public Result<?> updateOrderAddress(Integer orderId, Integer adminId,
+                                       String name, String phone, String address) {
+        Order order = this.getById(orderId);
+        if (order == null) return Result.error("订单不存在");
+        if ("COMPLETED".equals(order.getStatus()) || "CANCELLED".equals(order.getStatus()) || "REFUNDED".equals(order.getStatus()))
+            return Result.error("已完成或已取消的订单不能修改地址");
+
+        String oldSnapshot = order.getReceiverSnapshot();
+        String newSnapshot = (name != null ? name : "") + " "
+                + (phone != null ? phone : "") + " "
+                + (address != null ? address : "");
+        order.setReceiverSnapshot(newSnapshot.trim());
+        order.setUpdateTime(new Date());
+        this.updateById(order);
+        writeStatusLog(orderId, order.getStatus(), order.getStatus(), "ADMIN", adminId, null,
+                "修改收货地址：" + oldSnapshot + " → " + newSnapshot);
+        return Result.success("地址已更新");
+    }
+
     /** 收银退款（整单退款：回滚库存+标记REFUNDED，不走取消） */
     @Transactional
     public Result<?> refundCashierOrder(Integer orderId, Integer cashierId, String reason) {
@@ -466,8 +518,8 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
      * ✅ 同样支持 SKU 库存扣减
      */
     @Transactional
-    public Result<?> cashierCreateOrder(Integer cashierId, List<CreateOrderRequest.CartItem> cartItems,
-                                        String payMethod, Double receivedAmount) {
+    public Result<?> cashierCreateOrder(Integer cashierId, Integer userId, List<CreateOrderRequest.CartItem> cartItems,
+                                       String payMethod, Double receivedAmount) {
         double totalAmount = 0;
         List<Product> productList = new ArrayList<>();
         List<ProductSku> skuList = new ArrayList<>();
@@ -495,6 +547,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
 
         Order order = new Order();
         order.setOrderNo(orderNo);
+        order.setUserId(userId);  // 收银会员ID（可为null表示散客）
         order.setTotalAmount(totalAmount);
         order.setDiscountAmount(0.0);
         order.setCouponDiscount(0.0);
@@ -502,7 +555,11 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         order.setFreightAmount(0.0);
         order.setPayAmount(totalAmount);
         order.setStatus("COMPLETED");
-        order.setPayMethod(payMethod != null ? payMethod : "CASH");
+        String pm = payMethod != null ? payMethod.toUpperCase() : "CASH";
+        if (!pm.matches("^(CASH|WECHAT|ALIPAY|MEMBER_CARD)$")) {
+            pm = "CASH";
+        }
+        order.setPayMethod(pm);
         order.setSource("CASHIER");
         order.setCreateTime(new Date());
         order.setPayTime(new Date());
@@ -533,7 +590,6 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
             if (sku != null) {
                 sku.setStock(sku.getStock() - item.getQuantity());
                 productSkuMapper.updateById(sku);
-                product.setStock(product.getStock() - item.getQuantity());
             } else {
                 product.setStock(product.getStock() - item.getQuantity());
             }
@@ -616,14 +672,13 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
                     sku.setStock(sku.getStock() + item.getQuantity());
                     productSkuMapper.updateById(sku);
                 }
-                product.setStock(product.getStock() + item.getQuantity());
             } else {
                 product.setStock(product.getStock() + item.getQuantity());
             }
             product.setSalesCount(Math.max(0, product.getSalesCount() - item.getQuantity()));
             productMapper.updateById(product);
 
-            writeInventoryLog(product.getProductId(), item.getSkuId(), "ORDER_CANCEL",
+            writeInventoryLog(product.getProductId(), item.getSkuId(), "MANUAL",
                     item.getQuantity(), product.getStock(), order.getOrderId(),
                     "取消回库，单号: " + order.getOrderNo(), operatorId);
         }

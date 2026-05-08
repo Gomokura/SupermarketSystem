@@ -9,17 +9,22 @@ import java.util.Date;
 import java.util.List;
 
 @Data
-@TableName("STOCKTAKE_TASKS")
+@TableName("INVENTORY_CHECKS")
 public class StocktakeTask {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "CHECK_ID", type = IdType.INPUT)
+    @TableField("check_id")
     private Integer taskId;
     /** 盘点范围：all全部 / category按分类 */
     private String scope;
-    private Integer categoryId;   // scope=category时指定
+    @TableField("category_id")
+    private Integer categoryId;
     /** 状态：pending待盘点 / counting盘点中 / done已完成 */
     private String status;
+    @TableField("operator_id")
     private Integer creatorId;
+    @TableField("create_time")
     private Date createTime;
+    @TableField("complete_time")
     private Date submitTime;
 
     // 非数据库字段

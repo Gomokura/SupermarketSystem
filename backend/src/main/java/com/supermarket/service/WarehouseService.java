@@ -42,7 +42,8 @@ public class WarehouseService extends ServiceImpl<DamageRecordMapper, DamageReco
         InventoryLog log = new InventoryLog();
         log.setProductId(productId);
         log.setChangeAmount(-quantity);
-        log.setLogType("damage");
+        log.setLogType("DAMAGE");
+        log.setBalanceAfter(product.getStock());
         log.setRemark("报损：" + reason);
         log.setOperatorId(operatorId);
         log.setCreateTime(new Date());

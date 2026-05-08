@@ -11,19 +11,28 @@ import java.util.List;
 @Data
 @TableName("PURCHASE_ORDERS")
 public class PurchaseOrder {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "PO_ID", type = IdType.INPUT)
+    @TableField("po_id")
     private Integer poId;
+    @TableField("po_no")
+    private String poNo;
+    @TableField("supplier_id")
     private Integer supplierId;
-    private Integer operatorId;   // 创建人（管理员ID）
-    private String status;        // draft草稿/approved已审批/received已收货/cancelled已取消
-    private String poNo;          // 采购单号，数据库字段 PO_NO
-    private Double totalAmount;   // 采购总金额，数据库字段 TOTAL_AMOUNT（原totalCost）
-    private String remark;        // 备注
+    @TableField("create_by")
+    private Integer operatorId;
+    @TableField("total_amount")
+    private Double totalAmount;
+    private String status;
+    private String remark;
+    @TableField("create_time")
     private Date createTime;
-    private Date completeTime;    // 实际到货时间，数据库字段 COMPLETE_TIME
-
-    // 新增字段
-    private Date expectedDate;    // 预计到货日期
+    @TableField("approve_time")
+    private Date approveTime;
+    @TableField("receive_time")
+    private Date receiveTime;
+    @TableField("expected_date")
+    private Date expectedDate;
+    private Date completeTime;
 
     // 非数据库字段
     @TableField(exist = false)

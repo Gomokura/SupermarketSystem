@@ -121,7 +121,10 @@ export const bannerAPI = {
 }
 
 export const brandAPI = {
+  // /brands/list 供 C 端公开浏览，无需 token（在 WebConfig 中排除）
   getList: (params) => request.get('/brands/list', { params }),
+  // 以下为管理端操作，需要 adminToken
+  getAdminList: (params) => adminRequest.get('/brands/list', { params }),
   create: (data) => adminRequest.post('/brands/create', data),
   update: (id, data) => adminRequest.put(`/brands/${id}`, data),
   delete: (id) => adminRequest.delete(`/brands/${id}`)
@@ -142,11 +145,11 @@ export const couponAPI = {
   getAvailable: (orderAmount) => request.get('/coupons/available', { params: { orderAmount } }),
   getMyCoupons: (status) => request.get('/coupons/my', { params: { status } }),
   claim: (couponId) => request.post(`/coupons/claim/${couponId}`),
-  adminGetList: (params) => adminRequest.get('/admin/coupons', { params }),
-  adminCreate: (data) => adminRequest.post('/admin/coupons', data),
-  adminUpdate: (id, data) => adminRequest.put(`/admin/coupons/${id}`, data),
-  adminUpdateStatus: (id, status) => adminRequest.put(`/admin/coupons/${id}/status`, null, { params: { status } }),
-  adminDelete: (id) => adminRequest.delete(`/admin/coupons/${id}`)
+  adminGetList: (params) => adminRequest.get('/coupons/admin/list', { params }),
+  adminCreate: (data) => adminRequest.post('/coupons/admin', data),
+  adminUpdate: (id, data) => adminRequest.put(`/coupons/admin/${id}`, data),
+  adminUpdateStatus: (id, status) => adminRequest.put(`/coupons/admin/${id}/status`, null, { params: { status } }),
+  adminDelete: (id) => adminRequest.delete(`/coupons/admin/${id}`)
 }
 
 export const reviewAPI = {
@@ -186,12 +189,12 @@ export const cashierAPI = {
   getCurrentShift: () => adminRequest.get('/cashier/shift/current'),
   closeShift: (data) => adminRequest.post('/cashier/shift/close', data),
   getHistory: (params) => adminRequest.get('/cashier/shift/history', { params }),
-  searchProduct: (keyword) => adminRequest.get('/products/list', { params: { keyword } }),
-  getByBarcode: (barcode) => adminRequest.get(`/products/barcode/${barcode}`),
+  searchProduct: (keyword) => adminRequest.get('/products/admin/search', { params: { keyword } }),
+  getByBarcode: (barcode) => adminRequest.get(`/products/admin/barcode/${barcode}`),
   getMemberByPhone: (phone) => adminRequest.get('/auth/cashier/member', { params: { phone } }),
   checkout: (data) => adminRequest.post('/cashier/checkout', data),
   getOrderHistory: (params) => adminRequest.get('/cashier/orders/history', { params }),
-  refund: (orderId) => adminRequest.post('/cashier/orders/refund', { orderId })
+  refund: (orderNo) => adminRequest.post('/cashier/refund', { orderNo, reason: '' }),
 }
 
 export const courierAPI = {
@@ -220,16 +223,21 @@ export const stocktakeAPI = {
 
 export const adminAPI = {
   getUsers: (params) => adminRequest.get('/admin/users', { params }),
+  getProducts: (params) => adminRequest.get('/products/admin/list', { params }),
+  searchProducts: (keyword, pageNum = 1, pageSize = 20) =>
+    adminRequest.get('/products/admin/search', { params: { keyword, pageNum, pageSize } }),
+  getProductByBarcode: (barcode) => adminRequest.get(`/products/admin/barcode/${barcode}`),
+  getOrderDetail: (orderId) => adminRequest.get(`/orders/admin/${orderId}`),
   getUserDetail: (userId) => adminRequest.get(`/admin/users/${userId}`),
-  updateUserStatus: (userId, status, reason) => adminRequest.put(`/admin/users/${userId}/status`, { reason }, { params: { status } }),
+  updateUserStatus: (userId, status, reason) => adminRequest.put(`/admin/users/${userId}/status`, null, { params: { status, reason } }),
   getAdmins: (params) => adminRequest.get('/admin/admins', { params }),
   createAdmin: (data) => adminRequest.post('/admin/admins', data),
   updateAdmin: (id, data) => adminRequest.put(`/admin/admins/${id}`, data),
   updateAdminStatus: (id, status) => adminRequest.put(`/admin/admins/${id}/status`, null, { params: { status } }),
   resetAdminPassword: (id, newPassword) => adminRequest.put(`/admin/admins/${id}/reset-password`, null, { params: { newPassword } }),
   getOrders: (params) => adminRequest.get('/orders/admin/list', { params }),
-  shipOrder: (id, company, trackingNo) => adminRequest.put(`/admin/orders/${id}/shipping`, { company, trackingNo }),
-  updateOrderAddress: (id, name, phone, address) => adminRequest.put(`/admin/orders/${id}/address`, { name, phone, address }),
+  shipOrder: (id, company, trackingNo) => adminRequest.put(`/orders/${id}/ship`, { company, trackingNo }),
+  updateOrderAddress: (id, name, phone, address) => adminRequest.put(`/orders/${id}/address`, { name, phone, address }),
   getInventoryLogs: (params) => adminRequest.get('/admin/inventory/logs', { params }),
   warehousing: (productId, quantity, remark) => adminRequest.post('/admin/inventory/warehousing', null, { params: { productId, quantity, remark } }),
   outbound: (productId, quantity, remark) => adminRequest.post('/admin/inventory/outbound', null, { params: { productId, quantity, remark } }),

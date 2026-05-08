@@ -60,7 +60,7 @@
         <div class="card-actions">
           <el-button v-if="order.status === 'PENDING_PAY'" type="primary" size="small" @click="payOrder(order.orderId)">立即支付</el-button>
           <el-button v-if="canCancel(order.status)" size="small" @click="cancelOrder(order.orderId)">取消订单</el-button>
-          <el-button v-if="order.status === 'PENDING_RECEIVED'" type="warning" size="small" @click="confirmReceive(order.orderId)">确认收货</el-button>
+          <el-button v-if="order.status === 'PENDING_RECEIVED' || order.status === 'SHIPPING'" type="warning" size="small" @click="confirmReceive(order.orderId)">确认收货</el-button>
           <el-button v-if="order.status === 'COMPLETED' && !order.isReviewed" type="info" size="small" @click="$router.push(`/review/${order.orderId}`)">去评价</el-button>
           <el-button v-if="order.status === 'COMPLETED'" size="small" @click="reorder(order.orderId)">再次购买</el-button>
           <el-button size="small" plain @click="viewDetail(order.orderId)">查看详情</el-button>
@@ -99,13 +99,11 @@ const loading = ref(false)
 const tabs = [
   { label: '全部', value: 'all' },
   { label: '待付款', value: 'PENDING_PAY' },
-  { label: '待发货', value: 'PAID' },
+  { label: '待发货', value: 'PENDING_SHIP' },
   { label: '配送中', value: 'SHIPPING' },
   { label: '待收货', value: 'PENDING_RECEIVED' },
   { label: '已完成', value: 'COMPLETED' },
 ]
-
-onMounted(loadOrders)
 
 const switchTab = (val) => {
   activeTab.value = val
@@ -125,13 +123,15 @@ const loadOrders = async () => {
   finally { loading.value = false }
 }
 
+onMounted(loadOrders)
+
 const formatDate = (date) => date ? new Date(date).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''
 
 const getTotalCount = (order) => (order.items || []).reduce((s, i) => s + (i.quantity || 0), 0)
 
 const statusText = (s) => ({ PENDING_PAY: '待付款', PAID: '待发货', SHIPPING: '配送中', PENDING_RECEIVED: '待收货', COMPLETED: '已完成', CANCELLED: '已取消' })[s] || s
 const getStatusType = (s) => ({ PENDING_PAY: 'warning', PAID: 'info', SHIPPING: 'primary', PENDING_RECEIVED: 'warning', COMPLETED: 'success', CANCELLED: 'danger' })[s] || ''
-const canCancel = (s) => ['PENDING_PAY', 'PAID'].includes(s)
+const canCancel = (s) => ['PENDING_PAY', 'PAID', 'PENDING_SHIP'].includes(s)
 
 const viewDetail = (id) => router.push(`/orders/${id}`)
 

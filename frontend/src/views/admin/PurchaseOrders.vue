@@ -139,7 +139,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { adminAPI, productAPI } from '@/api'
+import { adminAPI } from '@/api'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -196,7 +196,7 @@ const loadOrders = async () => {
 const loadBaseData = async () => {
   const [supplierRes, productRes] = await Promise.all([
     adminAPI.getSuppliers(),
-    productAPI.getList({ pageNum: 1, pageSize: 100 })
+    adminAPI.searchProducts('', 1, 100)
   ])
   suppliers.value = supplierRes.data || []
   products.value = productRes.data?.records || productRes.data || []

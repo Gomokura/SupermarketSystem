@@ -12,29 +12,43 @@ import java.util.List;
 @Data
 @TableName("PRODUCTS")
 public class Product {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "PRODUCT_ID", type = IdType.INPUT)
+    @TableField("product_id")
     private Integer productId;
+    @TableField("product_name")
     private String productName;
+    @TableField("category_id")
     private Integer categoryId;
-    private Integer brandId;        // 品牌ID（外键 BRANDS）
-    private Integer supplierId;     // 供应商ID（外键 SUPPLIERS）
-    private String description;     // 商品描述
-    private String coverImage;      // 主图路径，数据库字段 COVER_IMAGE
+    @TableField("brand_id")
+    private Integer brandId;
+    @TableField("supplier_id")
+    private Integer supplierId;
+    private String description;
+    @TableField("cover_image")
+    private String coverImage;
     private String unit;
-    private Double originalPrice;   // 原价（划线价），数据库字段 ORIGINAL_PRICE
+    @TableField("original_price")
+    private Double originalPrice;
     private Double price;
     private Integer stock;
-    private Integer stockWarning;   // 库存预警阈值，数据库字段 STOCK_WARNING
-    private Integer salesCount;     // 累计销量，数据库字段 SALES_COUNT
-    private Double avgRating;       // 平均评分，数据库字段 AVG_RATING
-    private Integer isRecommend;    // 是否首页推荐 0/1，数据库字段 IS_RECOMMEND
-    private String status;          // active / off_shelf / deleted
+    @TableField("stock_warning")
+    private Integer stockWarning;
+    @TableField("sales_count")
+    private Integer salesCount;
+    @TableField("avg_rating")
+    private Double avgRating;
+    @TableField("is_recommend")
+    private Integer isRecommend;
+    private String status;
+    @TableField("create_time")
     private Date createTime;
+    @TableField("update_time")
     private Date updateTime;
-    private String barcode;         // 商品条码
-    @TableLogic
-    private Integer isDeleted;      // 逻辑删除 0/1，数据库字段 IS_DELETED
-    private Double costPrice;       // 成本价，数据库字段 COST_PRICE
+    private String barcode;
+    @TableField("is_deleted")
+    private Integer isDeleted;
+    @TableField("cost_price")
+    private Double costPrice;
 
     // 非数据库字段（联表查询用）
     @TableField(exist = false)

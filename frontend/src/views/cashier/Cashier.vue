@@ -639,10 +639,11 @@ const searchOrders = async () => {
 // 订单退款
 const refundOrder = async (order) => {
   try {
-    await ElMessageBox.confirm(`确定退款订单 ${order.orderNo} 吗？金额：¥${order.totalAmount}`, '退款确认', {
-      type: 'warning'
-    })
-    await cashierAPI.refund(order.orderNo)
+    const { value: reason } = await ElMessageBox.prompt(
+      `确定退款订单 ${order.orderNo} 吗？金额：¥${order.totalAmount}\n\n请填写退款原因（选填）`,
+      '退款确认', { type: 'warning', inputPlaceholder: '选填退款原因' }
+    )
+    await cashierAPI.refund(order.orderNo, reason || '')
     ElMessage.success('退款成功')
     searchOrders()
   } catch (e) {

@@ -120,7 +120,7 @@ async function confirmAssign() {
 
 async function markDelivering(row) {
   try {
-    await adminAPI.updateDeliveryStatus(row.deliveryId, 'DELIVERING')
+    await adminAPI.updateDeliveryStatus(row.deliveryId, 'PICKED_UP')
     ElMessage.success('已更新为配送中')
     loadDeliveries()
   } catch (e) { console.error(e) }
@@ -135,10 +135,10 @@ async function markDelivered(row) {
 }
 
 function statusLabel(s) {
-  return { PENDING: '待接单', DELIVERING: '配送中', DELIVERED: '已完成', FAILED: '失败' }[s] || s
+  return { ASSIGNED: '待接单', PICKED_UP: '配送中', DELIVERED: '已完成', FAILED: '配送失败' }[s] || s
 }
 function statusType(s) {
-  return { PENDING: 'warning', DELIVERING: 'primary', DELIVERED: 'success', FAILED: 'danger' }[s] || 'info'
+  return { ASSIGNED: 'warning', PICKED_UP: 'primary', DELIVERED: 'success', FAILED: 'danger' }[s] || 'info'
 }
 </script>
 

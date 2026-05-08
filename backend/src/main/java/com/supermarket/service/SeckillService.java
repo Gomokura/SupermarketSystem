@@ -183,6 +183,7 @@ public class SeckillService extends ServiceImpl<SeckillActivityModelMapper, Seck
                 seckillProductMapper.updateById(existing);
             } else {
                 SeckillActivityProductModel insert = new SeckillActivityProductModel();
+                insert.setId(seckillProductMapper.nextProductRowId());
                 insert.setSeckillId(activityId);
                 insert.setProductId(item.getProductId());
                 insert.setSeckillPrice(item.getSeckillPrice());

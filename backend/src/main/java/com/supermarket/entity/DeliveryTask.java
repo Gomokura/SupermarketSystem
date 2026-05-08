@@ -10,9 +10,12 @@ import java.util.Date;
 @Data
 @TableName("DELIVERY_TASKS")
 public class DeliveryTask {
-    @TableId(type = IdType.INPUT)
+    @TableId(value = "TASK_ID", type = IdType.INPUT)
+    @TableField("task_id")
     private Integer taskId;
+    @TableField("order_id")
     private Integer orderId;
+    @TableField("courier_id")
     private Integer courierId;
     /** 状态：ASSIGNED待分配 / PICKED_UP已取件 / DELIVERED已送达 / FAILED配送失败 */
     private String status;
