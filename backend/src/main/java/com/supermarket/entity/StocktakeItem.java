@@ -16,13 +16,13 @@ public class StocktakeItem {
     private Integer taskId;
     @TableField("product_id")
     private Integer productId;
-    @TableField("book_stock")
+    @TableField("system_quantity")
     private Integer bookStock;
-    @TableField("actual_stock")
+    @TableField("actual_quantity")
     private Integer actualStock;
     @TableField("difference")
     private Integer difference;
-    @TableField("diff_reason")
+    @TableField("remark")
     private String diffReason;
 
     // 非数据库字段

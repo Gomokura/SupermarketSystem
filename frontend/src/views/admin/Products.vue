@@ -198,7 +198,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { productAPI, brandAPI } from '@/api'
+import { productAPI, brandAPI, adminAPI } from '@/api'
 
 const products = ref([])
 const allCategories = ref([])

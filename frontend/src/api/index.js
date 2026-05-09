@@ -11,6 +11,7 @@ adminRequest.interceptors.request.use(config => {
     const token = localStorage.getItem('adminToken')
     if (token) config.headers.Authorization = `Bearer ${token}`
   }
+  config.headers['Content-Type'] = 'application/json' // 添加 Content-Type
   return config
 })
 adminRequest.interceptors.response.use(
@@ -28,6 +29,7 @@ courierRequest.interceptors.request.use(config => {
     const token = localStorage.getItem('courierToken')
     if (token) config.headers.Authorization = `Bearer ${token}`
   }
+  config.headers['Content-Type'] = 'application/json' // 添加 Content-Type
   return config
 })
 courierRequest.interceptors.response.use(

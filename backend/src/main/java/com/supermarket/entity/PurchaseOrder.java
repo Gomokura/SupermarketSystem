@@ -18,7 +18,7 @@ public class PurchaseOrder {
     private String poNo;
     @TableField("supplier_id")
     private Integer supplierId;
-    @TableField("create_by")
+    @TableField("operator_id")
     private Integer operatorId;
     @TableField("total_amount")
     private Double totalAmount;
@@ -26,12 +26,11 @@ public class PurchaseOrder {
     private String remark;
     @TableField("create_time")
     private Date createTime;
-    @TableField("approve_time")
+    @TableField("approved_time")
     private Date approveTime;
-    @TableField("receive_time")
-    private Date receiveTime;
-    @TableField("expected_date")
+    @TableField("expected_arrive_time")
     private Date expectedDate;
+    @TableField("complete_time")
     private Date completeTime;
 
     // 非数据库字段

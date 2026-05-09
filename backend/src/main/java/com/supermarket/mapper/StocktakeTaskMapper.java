@@ -7,6 +7,6 @@ import org.apache.ibatis.annotations.Select;
 
 @Mapper
 public interface StocktakeTaskMapper extends BaseMapper<StocktakeTask> {
-    @Select("SELECT SEQ_STOCKTAKE_TASKS.NEXTVAL FROM DUAL")
+    @Select("SELECT SEQ_INVENTORY_CHECKS.NEXTVAL FROM DUAL")
     Integer getNextId();
 }

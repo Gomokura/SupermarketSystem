@@ -141,7 +141,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { stocktakeAPI, adminAPI } from '@/api'
+import { stocktakeAPI, productAPI } from '@/api'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -184,7 +184,7 @@ const openCreate = async () => {
   createFormRef.value?.clearValidate()
   if (categories.value.length === 0) {
     try {
-      const res = await adminAPI.getProducts({ categoryId, pageNum: 1, pageSize: 500 })
+      const res = await productAPI.getCategories()
       categories.value = res.data || []
     } catch (e) { /* ignore */ }
   }
@@ -232,7 +232,7 @@ const hasInput = computed(() => detailItems.value.some(i => i.actualStock != nul
 const saveInput = async () => {
   const items = detailItems.value
     .filter(i => i.actualStock != null)
-    .map(i => ({ productId: i.productId, actualQty: i.actualStock, diffReason: i.diffReason }))
+    .map(i => ({ itemId: i.id, productId: i.productId, actualQty: i.actualStock, diffReason: i.diffReason }))
   if (items.length === 0) { ElMessage.warning('请至少录入一个商品的实际库存'); return }
   submitting.value = true
   try {
@@ -247,7 +247,7 @@ const saveInput = async () => {
 const submitStocktake = async () => {
   const items = detailItems.value
     .filter(i => i.actualStock != null)
-    .map(i => ({ productId: i.productId, actualQty: i.actualStock, diffReason: i.diffReason }))
+    .map(i => ({ itemId: i.id, productId: i.productId, actualQty: i.actualStock, diffReason: i.diffReason }))
   if (items.length === 0) { ElMessage.warning('请先录入实际库存'); return }
 
   const notAllEntered = detailItems.value.some(i => i.actualStock == null)

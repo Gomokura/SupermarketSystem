@@ -14,7 +14,9 @@ public class StocktakeTask {
     @TableId(value = "CHECK_ID", type = IdType.INPUT)
     @TableField("check_id")
     private Integer taskId;
-    /** 盘点范围：ALL全部 / CATEGORY按分类 */
+    @TableField("check_no")
+    private String checkNo;
+    /** 盘点范围：all全部 / category按分类 */
     @TableField("check_scope")
     private String scope;
     @TableField("scope_category_id")
