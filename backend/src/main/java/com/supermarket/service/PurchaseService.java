@@ -73,8 +73,12 @@ public class PurchaseService extends ServiceImpl<PurchaseOrderMapper, PurchaseOr
         if (expectedDate != null) {
             try { po.setExpectedDate(new SimpleDateFormat("yyyy-MM-dd").parse(expectedDate)); } catch (Exception ignored) {}
         }
-        double total = 0;
+        // 先获取ID再保存
+        po.setPoId(null);
         this.save(po);
+        // 重新设置poId（从序列获取）
+        po.setPoId(po.getPoId()); // 插入后MyBatis-Plus会自增填充
+        double total = 0;
         for (Map<String, Object> raw : items) {
             PurchaseOrderItem item = new PurchaseOrderItem();
             item.setPoId(po.getPoId());
@@ -83,8 +87,11 @@ public class PurchaseService extends ServiceImpl<PurchaseOrderMapper, PurchaseOr
             double price = ((Number) raw.get("unitPrice")).doubleValue();
             item.setUnitPrice(price);
             item.setArrivedQuantity(0);
+            // 计算 subtotal
+            double subtotal = price * item.getOrderQuantity();
+            item.setSubtotal(subtotal);
             itemMapper.insert(item);
-            total += price * item.getOrderQuantity();
+            total += subtotal;
         }
         po.setTotalAmount(total);
         this.updateById(po);

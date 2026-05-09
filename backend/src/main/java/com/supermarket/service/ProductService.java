@@ -468,10 +468,24 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
 
     @Transactional
     public Result<?> saveProductSku(ProductSku sku) {
+        Product product = null;
         if (sku.getSkuId() == null) {
             productSkuMapper.insert(sku);
         } else {
             productSkuMapper.updateById(sku);
+        }
+        // 同步主表汇总库存
+        if (sku.getProductId() != null) {
+            product = productMapper.selectById(sku.getProductId());
+        }
+        if (product != null) {
+            LambdaQueryWrapper<ProductSku> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(ProductSku::getProductId, sku.getProductId());
+            List<ProductSku> allSkus = productSkuMapper.selectList(wrapper);
+            int totalStock = allSkus.stream().mapToInt(s -> s.getStock() != null ? s.getStock() : 0).sum();
+            product.setStock(totalStock);
+            product.setUpdateTime(new Date());
+            productMapper.updateById(product);
         }
         return Result.success();
     }
@@ -487,6 +501,17 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
             } else {
                 productSkuMapper.updateById(sku);
             }
+        }
+        // 同步主表汇总库存
+        LambdaQueryWrapper<ProductSku> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ProductSku::getProductId, productId);
+        List<ProductSku> allSkus = productSkuMapper.selectList(wrapper);
+        int totalStock = allSkus.stream().mapToInt(s -> s.getStock() != null ? s.getStock() : 0).sum();
+        Product product = productMapper.selectById(productId);
+        if (product != null) {
+            product.setStock(totalStock);
+            product.setUpdateTime(new Date());
+            productMapper.updateById(product);
         }
         return Result.success();
     }

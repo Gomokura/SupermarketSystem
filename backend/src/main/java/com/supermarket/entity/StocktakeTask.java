@@ -14,9 +14,10 @@ public class StocktakeTask {
     @TableId(value = "CHECK_ID", type = IdType.INPUT)
     @TableField("check_id")
     private Integer taskId;
-    /** 盘点范围：all全部 / category按分类 */
+    /** 盘点范围：ALL全部 / CATEGORY按分类 */
+    @TableField("check_scope")
     private String scope;
-    @TableField("category_id")
+    @TableField("scope_category_id")
     private Integer categoryId;
     /** 状态：pending待盘点 / counting盘点中 / done已完成 */
     private String status;

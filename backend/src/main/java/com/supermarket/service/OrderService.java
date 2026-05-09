@@ -164,7 +164,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
             if (!"active".equals(product.getStatus())) return Result.error("商品已下架: " + product.getProductName());
 
             if (item.getSkuId() != null) {
-                // ✅ 有 SKU：校验 SKU 库存，价格取 sku.price
+                // 有 SKU：校验 SKU 库存，价格取 sku.price
                 ProductSku sku = productSkuMapper.selectById(item.getSkuId());
                 if (sku == null || !"active".equals(sku.getStatus()))
                     return Result.error("规格不存在或已下架: " + item.getSkuId());
@@ -246,11 +246,11 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
             orderItem.setItemId(orderItemMapper.getNextId());
             orderItemMapper.insert(orderItem);
 
-            // ✅ 扣库存：只操作实际存储库存的表
+            // 扣库存：只操作实际存储库存的表
             if (sku != null) {
                 // 有 SKU：只扣 SKU 独立库存（主表 PRODUCTS.stock 仅在无SKU时使用）
                 if (sku.getStock() < item.getQuantity()) {
-                    return Result.error("SKU「" + sku.getSkuName() + "」库存不足");
+                    return Result.error("SKU" + sku.getSkuName() + "库存不足");
                 }
                 int newSkuStock = sku.getStock() - item.getQuantity();
                 sku.setStock(newSkuStock);
@@ -258,14 +258,14 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
             } else {
                 // 无 SKU：只扣主表
                 if (product.getStock() < item.getQuantity()) {
-                    return Result.error("商品「" + product.getProductName() + "」库存不足");
+                    return Result.error("商品" + product.getProductName() + "库存不足");
                 }
                 product.setStock(product.getStock() - item.getQuantity());
             }
             product.setSalesCount(product.getSalesCount() + item.getQuantity());
             productMapper.updateById(product);
 
-            // ✅ 写库存流水（含 skuId）
+            // 写库存流水（含 skuId）
             writeInventoryLog(product.getProductId(),
                     item.getSkuId(),
                     "ORDER_OUT",
@@ -299,7 +299,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         return Result.success(data);
     }
 
-    /** 订单支付（pending→paid） */
+    /** 订单支付（pending→paid→pending_ship） */
     @Transactional
     public Result<?> payOrder(Integer orderId, Integer userId, String payMethod) {
         Order order = this.getById(orderId);
@@ -308,25 +308,32 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         if (!"PENDING_PAY".equals(order.getStatus())) return Result.error("订单状态不正确，无法支付");
 
         String from = order.getStatus();
-        // v3.0：支付成功后进入“待发货”
-        order.setStatus("PENDING_SHIP");
+        // 支付成功后先进入 PAID 状态
+        order.setStatus("PAID");
         order.setPayMethod(payMethod != null ? payMethod : order.getPayMethod());
         order.setPayTime(new Date());
         order.setUpdateTime(new Date());
         this.updateById(order);
-        writeStatusLog(orderId, from, "PENDING_SHIP", "USER", userId, null, "支付成功");
+        writeStatusLog(orderId, from, "PAID", "USER", userId, null, "支付成功");
+
+        // 再更新为待发货状态
+        from = order.getStatus();
+        order.setStatus("PENDING_SHIP");
+        this.updateById(order);
+        writeStatusLog(orderId, from, "PENDING_SHIP", "USER", userId, null, "待发货");
         return Result.success("支付成功");
     }
 
     /**
-     * 取消订单（pending/paid 可取消，✅ 退还 SKU 库存和主表库存）
+     * 取消订单（pending/pending_ship 可取消，退还 SKU 库存和主表库存）
      */
     @Transactional
     public Result<?> cancelOrder(Integer orderId, Integer userId) {
         Order order = this.getById(orderId);
         if (order == null) return Result.error("订单不存在");
         if (!order.getUserId().equals(userId)) return Result.error("无权操作此订单");
-        if (!"PENDING_PAY".equals(order.getStatus()) && !"PAID".equals(order.getStatus()) && !"PENDING_SHIP".equals(order.getStatus()))
+        // PENDING_PAY 和 PENDING_SHIP 状态可取消（PAID 状态实际上不存在，跳过）
+        if (!"PENDING_PAY".equals(order.getStatus()) && !"PENDING_SHIP".equals(order.getStatus()))
             return Result.error("当前状态（" + order.getStatus() + "）无法取消");
 
         restoreStock(order, userId);
@@ -341,13 +348,14 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         return Result.success("订单已取消");
     }
 
-    /** 确认收货（shipped/pending_received→completed） */
+    /** 确认收货（pending_received→completed） */
     public Result<?> confirmReceipt(Integer orderId, Integer userId) {
         Order order = this.getById(orderId);
         if (order == null) return Result.error("订单不存在");
         if (!order.getUserId().equals(userId)) return Result.error("无权操作");
         String status = order.getStatus();
-        if (!"SHIPPING".equals(status) && !"PENDING_RECEIVED".equals(status)) {
+        // 只允许 PENDING_RECEIVED 状态确认收货
+        if (!"PENDING_RECEIVED".equals(status)) {
             return Result.error("当前订单状态不允许确认收货");
         }
         String from = order.getStatus();
@@ -400,7 +408,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         return Result.success(order);
     }
 
-    /** 管理员发货（paid→shipped） */
+    /** 管理员发货（pending_ship→shipping） */
     public Result<?> shipOrder(Integer orderId, Integer operatorId, String expressCompany, String expressNo) {
         Order order = this.getById(orderId);
         if (order == null) return Result.error("订单不存在");
@@ -450,7 +458,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         return Result.success(task);
     }
 
-    /** 管理员强制取消（✅ 同步退还库存） */
+    /** 管理员强制取消（同步退还库存） */
     @Transactional
     public Result<?> adminCancelOrder(Integer orderId, Integer operatorId, String reason) {
         Order order = this.getById(orderId);
@@ -515,7 +523,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
 
     /**
      * 收银台下单（线下POS，source=cashier）
-     * ✅ 同样支持 SKU 库存扣减
+     * 同样支持 SKU 库存扣减
      */
     @Transactional
     public Result<?> cashierCreateOrder(Integer cashierId, Integer userId, List<CreateOrderRequest.CartItem> cartItems,
@@ -655,7 +663,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
 
     /**
      * 退还库存（取消订单时调用）
-     * ✅ 优先退还 SKU 库存，再同步主表
+     * 优先退还 SKU 库存，再同步主表
      */
     private void restoreStock(Order order, Integer operatorId) {
         LambdaQueryWrapper<OrderItem> wrapper = new LambdaQueryWrapper<>();

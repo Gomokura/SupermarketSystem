@@ -24,8 +24,8 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
     public Result<?> create(Integer creatorId, String scope, Integer categoryId) {
         StocktakeTask task = new StocktakeTask();
         task.setCreatorId(creatorId);
-        task.setScope(scope);
-        task.setCategoryId("category".equals(scope) ? categoryId : null);
+        task.setScope("ALL".equals(scope) ? scope : "CATEGORY");
+        task.setCategoryId("CATEGORY".equals(scope) ? categoryId : null);
         task.setStatus("IN_PROGRESS");
         task.setCreateTime(new Date());
         task.setTaskId(stocktakeTaskMapper.getNextId());
@@ -33,7 +33,7 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
 
         // 拉取商品账面库存生成盘点明细
         LambdaQueryWrapper<Product> pw = new LambdaQueryWrapper<>();
-        pw.eq(Product::getStatus, "on");
+        pw.eq(Product::getStatus, "active");
         if ("category".equals(scope) && categoryId != null) pw.eq(Product::getCategoryId, categoryId);
         List<Product> products = productMapper.selectList(pw);
         for (Product p : products) {

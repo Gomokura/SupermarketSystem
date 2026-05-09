@@ -18,7 +18,7 @@ public class Banner {
     @TableField("link_type")
     private String linkType;
     @TableField("link_id")
-    private String linkTarget;
+    private Integer linkTarget;
     @TableField("sort_order")
     private Integer sortOrder;
     private String status;

@@ -99,7 +99,7 @@ public class AfterSaleService extends ServiceImpl<AfterSaleMapper, AfterSale> {
         if ("APPROVE".equals(action)) {
             as.setStatus("APPROVED");
         } else if ("REJECT".equals(action)) {
-            as.setStatus("rejected");
+            as.setStatus("REJECTED");
             // 恢复订单状态
             Order order = orderMapper.selectById(as.getOrderId());
             if (order != null) {

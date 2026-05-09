@@ -63,7 +63,7 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
 
         if (!oldPassword.equals(courier.getPassword())) throw new BusinessException("旧密码错误");
 
-        courier.setPassword(newPassword);
+        courier.setPassword(newPassword); // 实际生产环境应加密
         courierMapper.updateById(courier);
         return Result.success();
     }

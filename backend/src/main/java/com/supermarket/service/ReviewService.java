@@ -87,9 +87,15 @@ public class ReviewService extends ServiceImpl<ReviewMapper, Review> {
         return Result.success();
     }
 
-    /** 删除评价 */
+    /** 删除评价（同时更新商品评分） */
+    @Transactional
     public Result<?> deleteReview(Integer reviewId) {
+        Review review = this.getById(reviewId);
+        if (review == null) return Result.success();
+        Integer productId = review.getProductId();
         this.removeById(reviewId);
+        // 重新计算平均评分
+        updateProductAvgRating(productId);
         return Result.success();
     }
 

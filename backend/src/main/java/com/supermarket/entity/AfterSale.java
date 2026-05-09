@@ -23,8 +23,6 @@ public class AfterSale {
     private String asType;
     private String reason;
     private String images;
-    @TableField("item_id")
-    private Integer itemId;
     private String status;
     private Double refundAmount;
     @TableField("ADMIN_REMARK")

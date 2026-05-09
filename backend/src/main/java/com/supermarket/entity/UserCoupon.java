@@ -10,7 +10,7 @@ import java.util.Date;
 @Data
 @TableName("USER_COUPONS")
 public class UserCoupon {
-    @TableId(value = "UC_ID", type = IdType.AUTO)
+    @TableId(value = "UC_ID", type = IdType.INPUT)
     private Integer ucId;
     
     @TableField(exist = false)

@@ -19,7 +19,7 @@ public class Category {
     @TableField("category_name")
     private String categoryName;
     @TableField("icon_url")
-    private String icon;
+    private String iconUrl;
     @TableField("sort_order")
     private Integer sortOrder;
     private String status;

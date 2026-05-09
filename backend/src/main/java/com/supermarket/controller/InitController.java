@@ -443,7 +443,7 @@ public class InitController {
         b1.setBannerId(1);
         b1.setImageUrl("https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=supermarket%20promotion%20banner%20fresh%20groceries%20sale&image_size=landscape_16_9");
         b1.setLinkType("activity");
-        b1.setLinkTarget("");
+        b1.setLinkTarget(null);
         b1.setSortOrder(1);
         b1.setStatus("active");
         bannerMapper.insert(b1);
@@ -452,7 +452,7 @@ public class InitController {
         b2.setBannerId(2);
         b2.setImageUrl("https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=summer%20sale%20supermarket%20fresh%20fruits&image_size=landscape_16_9");
         b2.setLinkType("category");
-        b2.setLinkTarget("3");
+        b2.setLinkTarget(3);
         b2.setSortOrder(2);
         b2.setStatus("active");
         bannerMapper.insert(b2);

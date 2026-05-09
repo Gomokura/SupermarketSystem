@@ -36,6 +36,10 @@ public class WarehouseService extends ServiceImpl<DamageRecordMapper, DamageReco
         record.setReason(reason);
         record.setOperatorId(operatorId);
         record.setCreateTime(new Date());
+        // 报损金额计算
+        double unitCost = product.getCostPrice() != null ? product.getCostPrice() : 0;
+        record.setUnitCost(unitCost);
+        record.setTotalCost(unitCost * quantity);
         record.setDamageId(damageRecordMapper.getNextId());
         this.save(record);
 

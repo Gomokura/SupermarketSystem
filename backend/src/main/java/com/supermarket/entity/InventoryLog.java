@@ -18,9 +18,9 @@ public class InventoryLog {
     @TableField("sku_id")
     private Integer skuId;
     @TableField("change_amount")
-    private Integer changeAmount;
+    private int changeAmount;
     @TableField("balance_after")
-    private Integer balanceAfter;
+    private int balanceAfter;
     @TableField("log_type")
     private String logType;
     private String remark;
