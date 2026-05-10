@@ -15,7 +15,7 @@
         </div>
       </div>
       <div class="stat-row">
-        <div class="stat-item" @click="$router.push('/points')">
+        <div class="stat-item" @click="$router.push('/points-logs')">
           <div class="stat-val">{{ pointsBalance }}</div>
           <div class="stat-lbl">积分</div>
         </div>
@@ -126,7 +126,7 @@ const menuEntries = [
   { icon: '📦', label: '我的订单', path: '/orders' },
   { icon: '❤️', label: '我的收藏', path: '/favorites' },
   { icon: '🎫', label: '我的优惠券', path: '/coupons' },
-  { icon: '💎', label: '积分明细', path: '/points' },
+  { icon: '💎', label: '积分明细', path: '/points-logs' },
   { icon: '📍', label: '收货地址', path: '/address' },
   { icon: '🔄', label: '我的售后', path: '/after-sale' },
   { icon: '⭐', label: '我的评价', path: '/orders' },

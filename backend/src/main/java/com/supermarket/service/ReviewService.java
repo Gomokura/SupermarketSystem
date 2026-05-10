@@ -5,9 +5,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.supermarket.common.BusinessException;
 import com.supermarket.common.Result;
+import com.supermarket.entity.Order;
+import com.supermarket.entity.OrderItem;
 import com.supermarket.entity.Product;
 import com.supermarket.entity.Review;
 import com.supermarket.entity.User;
+import com.supermarket.mapper.OrderItemMapper;
+import com.supermarket.mapper.OrderMapper;
 import com.supermarket.mapper.ProductMapper;
 import com.supermarket.mapper.ReviewMapper;
 import com.supermarket.mapper.UserMapper;
@@ -25,6 +29,8 @@ public class ReviewService extends ServiceImpl<ReviewMapper, Review> {
     @Autowired private UserMapper userMapper;
     @Autowired private ProductMapper productMapper;
     @Autowired private ReviewMapper reviewMapper;
+    @Autowired private OrderMapper orderMapper;
+    @Autowired private OrderItemMapper orderItemMapper;
 
     /** C端：查询商品的公开评价 */
     public Result<?> getProductReviews(Integer productId, Integer pageNum, Integer pageSize) {
@@ -41,11 +47,26 @@ public class ReviewService extends ServiceImpl<ReviewMapper, Review> {
     /** C端：提交评价 */
     @Transactional
     public Result<?> submitReview(Review review, Integer userId) {
+        validateReviewRequest(review, userId);
+
+        LambdaQueryWrapper<Review> duplicateWrapper = new LambdaQueryWrapper<>();
+        duplicateWrapper.eq(Review::getOrderItemId, review.getOrderItemId());
+        if (this.count(duplicateWrapper) > 0) {
+            throw new BusinessException("该商品已评价，请勿重复提交");
+        }
+
         review.setUserId(userId);
         review.setIsHidden(0);
         review.setCreateTime(new Date());
         review.setReviewId(reviewMapper.getNextId());
-        this.save(review);
+        try {
+            this.save(review);
+        } catch (RuntimeException e) {
+            if (isDuplicateReviewException(e)) {
+                throw new BusinessException("该商品已评价，请勿重复提交");
+            }
+            throw e;
+        }
 
         // 更新商品平均评分
         updateProductAvgRating(review.getProductId());
@@ -100,6 +121,47 @@ public class ReviewService extends ServiceImpl<ReviewMapper, Review> {
     }
 
     // ---- 内部工具 ----
+
+    private void validateReviewRequest(Review review, Integer userId) {
+        if (review == null) throw new BusinessException("评价内容不能为空");
+        if (review.getOrderId() == null) throw new BusinessException("订单ID不能为空");
+        if (review.getOrderItemId() == null) throw new BusinessException("订单商品ID不能为空");
+        if (review.getProductId() == null) throw new BusinessException("商品ID不能为空");
+        if (review.getRating() == null || review.getRating() < 1 || review.getRating() > 5) {
+            throw new BusinessException("评分必须在1到5之间");
+        }
+        if (!StringUtils.hasText(review.getContent())) {
+            throw new BusinessException("评价内容不能为空");
+        }
+
+        Order order = orderMapper.selectById(review.getOrderId());
+        if (order == null) throw new BusinessException(404, "订单不存在");
+        if (!order.getUserId().equals(userId)) throw new BusinessException(403, "无权评价该订单");
+        if (!"COMPLETED".equals(order.getStatus())) {
+            throw new BusinessException("订单完成后才能评价");
+        }
+
+        OrderItem item = orderItemMapper.selectById(review.getOrderItemId());
+        if (item == null
+                || !review.getOrderId().equals(item.getOrderId())
+                || !review.getProductId().equals(item.getProductId())) {
+            throw new BusinessException("订单商品信息不匹配");
+        }
+    }
+
+    private boolean isDuplicateReviewException(Throwable e) {
+        Throwable current = e;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null
+                    && (message.contains("UQ_REV_ORDER_ITEM")
+                    || message.contains("ORA-00001"))) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
 
     private void fillUserInfo(List<Review> reviews) {
         for (Review r : reviews) {

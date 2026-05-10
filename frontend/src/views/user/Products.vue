@@ -63,7 +63,7 @@
           <img
             :src="product.coverImage || imgFallback(product.productId)"
             class="card-img"
-            @error="e => e.target.src = imgFallback(product.productId)"
+            @error="e => e.target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23f5f5f5%22 width=%22300%22 height=%22300%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3E图片加载中...%3C/text%3E%3C/svg%3E'"
           />
           <div class="discount-tag" v-if="product.originalPrice > product.price">
             {{ Math.round(product.price / product.originalPrice * 10) }}折
@@ -123,6 +123,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search, Filter, Loading, Plus } from '@element-plus/icons-vue'
 import { productAPI, brandAPI, cartAPI } from '@/api'
+import { getProductImage } from '@/utils/image'
 
 const route = useRoute()
 const router = useRouter()
@@ -155,7 +156,7 @@ const sortMap = {
 }
 
 const hasMore = ref(false)
-const imgFallback = (id) => `https://picsum.photos/seed/p${id}/300/300`
+const imgFallback = (id) => getProductImage(id)
 
 onMounted(() => {
   // 从URL参数初始化
@@ -273,7 +274,7 @@ const addToCart = async (product) => {
 .sort-item.active { color: #ff4d4f; font-weight: bold; }
 
 .product-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr);
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 8px; padding: 0 8px 8px;
 }
 

@@ -23,47 +23,55 @@
           <el-button type="primary" @click="doSearch">搜索</el-button>
           <el-button @click="resetQuery">重置</el-button>
           <el-button type="success" @click="openAdd" style="margin-left:8px">添加商品</el-button>
+          <el-button @click="exportProducts" style="margin-left:8px">📊 导出Excel</el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
-    <!-- 列表 -->
-    <el-table :data="products" border v-loading="loading">
-      <el-table-column prop="productId" label="ID" width="70" />
-      <el-table-column label="主图" width="80">
-        <template #default="{ row }">
-          <el-image v-if="row.coverImage" :src="row.coverImage" style="width:50px;height:50px;object-fit:cover" />
-          <span v-else style="color:#ccc">无图</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="productName" label="商品名称" min-width="160" show-overflow-tooltip />
-      <el-table-column prop="barcode" label="条码" width="130" />
-      <el-table-column prop="categoryName" label="分类" width="100" />
-      <el-table-column prop="brandName" label="品牌" width="90" />
-      <el-table-column prop="price" label="售价" width="90">
-        <template #default="{ row }">￥{{ row.price }}</template>
-      </el-table-column>
-      <el-table-column prop="costPrice" label="成本价" width="90">
-        <template #default="{ row }">￥{{ row.costPrice || '—' }}</template>
-      </el-table-column>
-      <el-table-column prop="stock" label="库存" width="80" />
-      <el-table-column prop="salesCount" label="销量" width="80" />
-      <el-table-column prop="status" label="状态" width="90">
-        <template #default="{ row }">
-          <el-tag :type="row.status === 'active' ? 'success' : 'info'">
-            {{ row.status === 'active' ? '上架' : '下架' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right">
-        <template #default="{ row }">
-          <el-button size="small" @click="openEdit(row)">编辑</el-button>
-          <el-button size="small" :type="row.status === 'active' ? 'warning' : 'success'"
-            @click="toggleStatus(row)">{{ row.status === 'active' ? '下架' : '上架' }}</el-button>
-          <el-button size="small" type="danger" @click="handleDelete(row.productId)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <!-- 商品卡片网格 -->
+    <div class="products-grid" v-loading="loading">
+      <div class="product-card" v-for="product in products" :key="product.productId" @click="openEdit(product)">
+        <!-- 图片容器 -->
+        <div class="product-image-container">
+          <img 
+            class="product-image"
+            :src="product.coverImage || getAiImage(product.productName)"
+            :alt="product.productName"
+          />
+          <!-- 折扣角标 -->
+          <div class="discount-badge" v-if="product.originalPrice && product.price < product.originalPrice">
+            {{ Math.round((product.price / product.originalPrice) * 10) }}折
+          </div>
+          <!-- 状态标签 -->
+          <div class="status-badge" :class="product.status">
+            {{ product.status === 'active' ? '上架' : '下架' }}
+          </div>
+        </div>
+
+        <!-- 卡片信息 -->
+        <div class="product-info">
+          <h3 class="product-name">{{ product.productName }}</h3>
+          <div class="product-price">￥{{ product.price }}</div>
+          <div class="product-meta">
+            <span class="sales">销量: {{ product.salesCount || 0 }}</span>
+            <span class="category">{{ product.categoryName }}</span>
+          </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="product-actions">
+          <el-button size="small" type="primary" @click.stop="openEdit(product)">编辑</el-button>
+          <el-button 
+            size="small" 
+            :type="product.status === 'active' ? 'warning' : 'success'"
+            @click.stop="toggleStatus(product)"
+          >
+            {{ product.status === 'active' ? '下架' : '上架' }}
+          </el-button>
+          <el-button size="small" type="danger" @click.stop="handleDelete(product.productId)">删除</el-button>
+        </div>
+      </div>
+    </div>
     <div class="pagination">
       <el-pagination v-model:current-page="query.pageNum" v-model:page-size="query.pageSize"
         :total="total" layout="total, sizes, prev, pager, next"
@@ -199,6 +207,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { productAPI, brandAPI, adminAPI } from '@/api'
+import { exportToExcel } from '@/utils/exportUtils'
 
 const products = ref([])
 const allCategories = ref([])
@@ -338,8 +347,222 @@ async function saveSkus() {
     loadSkus(productId)
   } catch (e) { console.error(e) }
 }
+
+function exportProducts() {
+  if (products.value.length === 0) {
+    ElMessage.warning('没有数据可导出')
+    return
+  }
+  
+  const columns = [
+    { label: '商品ID', prop: 'productId' },
+    { label: '商品名称', prop: 'productName' },
+    { label: '条码', prop: 'barcode' },
+    { label: '分类', prop: 'categoryName' },
+    { label: '品牌', prop: 'brandName' },
+    { label: '售价', prop: 'price' },
+    { label: '成本价', prop: 'costPrice' },
+    { label: '库存', prop: 'stock' },
+    { label: '销量', prop: 'salesCount' },
+    { label: '状态', prop: 'status' }
+  ]
+  
+  const exportData = products.value.map(product => ({
+    ...product,
+    status: product.status === 'active' ? '上架' : '下架'
+  }))
+  
+  try {
+    exportToExcel(exportData, columns, '商品管理')
+    ElMessage.success('商品列表已导出')
+  } catch (e) {
+    ElMessage.error('导出失败')
+  }
+}
+
+// 生成 Pollinations.ai 图片 URL
+function getAiImage(productName) {
+  const prompt = encodeURIComponent(`${productName} product photo white background realistic high quality`)
+  return `https://image.pollinations.ai/prompt/${prompt}?width=300&height=300&nologo=true`
+}
 </script>
 
 <style scoped>
-.pagination { margin-top: 16px; display: flex; justify-content: flex-end; }
+.page-container {
+  padding: 16px;
+  background: #f5f7fa;
+  min-height: 100vh;
+}
+
+h2 {
+  margin: 0 0 16px 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.pagination { 
+  margin-top: 16px; 
+  display: flex; 
+  justify-content: flex-end; 
+}
+
+/* 商品卡片网格 */
+.products-grid {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 16px;
+  /* PC 端: 4-5 列 */
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+/* 平板端: 3 列 (768px - 1200px) */
+@media (max-width: 1200px) {
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+/* 手机端: 2 列 */
+@media (max-width: 768px) {
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 卡片样式 */
+.product-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* 图片容器 */
+.product-image-container {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  background: #f0f0f0;
+  overflow: hidden;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 折扣角标 */
+.discount-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(255, 59, 48, 0.9);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 10;
+}
+
+/* 状态标签 */
+.status-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: white;
+  z-index: 10;
+}
+
+.status-badge.active {
+  background: rgba(52, 211, 153, 0.9);
+}
+
+.status-badge.off_shelf {
+  background: rgba(148, 163, 184, 0.9);
+}
+
+/* 卡片信息区 */
+.product-info {
+  padding: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-name {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  height: 28px;
+}
+
+.product-price {
+  font-size: 16px;
+  color: #ff3b30;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.product-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #999;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.product-meta .sales {
+  flex: 1;
+}
+
+.product-meta .category {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 操作按钮区 */
+.product-actions {
+  padding: 8px 12px;
+  display: flex;
+  gap: 4px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.product-actions :deep(.el-button) {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.product-actions :deep(.el-button--small) {
+  height: 28px;
+  line-height: 26px;
+}
 </style>

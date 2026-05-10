@@ -21,14 +21,20 @@
       </el-descriptions>
     </el-card>
 
-    <el-card v-if="order && (order.pickupTime || order.deliverTime)" class="delivery-card">
+    <el-card v-if="order && (order.deliveryTaskId || order.pickupTime || order.deliverTime)" class="delivery-card">
       <template #header>
         <span>配送信息</span>
       </template>
       <el-descriptions :column="2" border>
         <el-descriptions-item label="配送状态">{{ getDeliveryStatusText(order) }}</el-descriptions-item>
-        <el-descriptions-item label="发货时间" v-if="order.pickupTime">{{ formatDate(order.pickupTime) }}</el-descriptions-item>
+        <el-descriptions-item label="配送员" v-if="order.courierName">
+          {{ order.courierName }} {{ order.courierPhone || '' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="取件时间" v-if="order.pickupTime">{{ formatDate(order.pickupTime) }}</el-descriptions-item>
         <el-descriptions-item label="送达时间" v-if="order.deliverTime">{{ formatDate(order.deliverTime) }}</el-descriptions-item>
+        <el-descriptions-item label="失败原因" :span="2" v-if="order.deliveryFailReason">
+          {{ order.deliveryFailReason }}
+        </el-descriptions-item>
       </el-descriptions>
     </el-card>
 
@@ -130,6 +136,13 @@ const getStatusText = (status) => {
 }
 
 const getDeliveryStatusText = (order) => {
+  const deliveryMap = {
+    ASSIGNED: '待取件',
+    PICKED_UP: '配送中',
+    DELIVERED: '已送达',
+    FAILED: '配送失败'
+  }
+  if (order.deliveryStatus) return deliveryMap[order.deliveryStatus] || order.deliveryStatus
   const map = {
     PENDING_PAY: '待付款',
     PENDING_SHIP: '待发货',

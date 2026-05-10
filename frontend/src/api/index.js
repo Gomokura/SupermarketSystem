@@ -142,6 +142,12 @@ export const seckillAPI = {
   adminGetActivityProducts: (seckillId) => adminRequest.get(`/seckill/admin/activities/${seckillId}/products`)
 }
 
+export const promotionAPI = {
+  getActive: () => request.get('/promotions/active'),
+  getList: (params) => request.get('/promotions/list', { params }),
+  getDetail: (promotionId) => request.get(`/promotions/${promotionId}`)
+}
+
 export const couponAPI = {
   getCenter: () => request.get('/coupons/center'),
   getAvailable: (orderAmount) => request.get('/coupons/available', { params: { orderAmount } }),
@@ -191,12 +197,14 @@ export const cashierAPI = {
   getCurrentShift: () => adminRequest.get('/cashier/shift/current'),
   closeShift: (data) => adminRequest.post('/cashier/shift/close', data),
   getHistory: (params) => adminRequest.get('/cashier/shift/history', { params }),
+  getDashboard: () => adminRequest.get('/cashier/dashboard'),
+  getDailyReport: () => adminRequest.get('/cashier/daily-report'),
   searchProduct: (keyword) => adminRequest.get('/products/admin/search', { params: { keyword } }),
   getByBarcode: (barcode) => adminRequest.get(`/products/admin/barcode/${barcode}`),
   getMemberByPhone: (phone) => adminRequest.get('/auth/cashier/member', { params: { phone } }),
   checkout: (data) => adminRequest.post('/cashier/checkout', data),
   getOrderHistory: (params) => adminRequest.get('/cashier/orders/history', { params }),
-  refund: (orderNo) => adminRequest.post('/cashier/refund', { orderNo, reason: '' }),
+  refund: (orderNo, reason = '') => adminRequest.post('/cashier/refund', { orderNo, reason }),
 }
 
 export const courierAPI = {
@@ -284,8 +292,8 @@ export const adminAPI = {
 
 // 成员B API: 收藏、售后、评价
 export const favoritesAPI = {
-  getList: (params) => request.get('/favorites', { params }),
-  add: (productId) => request.post('/favorites', { productId }),
+  getList: (params) => request.get('/favorites/my', { params }),
+  add: (productId) => request.post(`/favorites/${productId}`),
   remove: (productId) => request.delete(`/favorites/${productId}`)
 }
 
@@ -302,7 +310,7 @@ export const reviewsAPI = {
   submit: (data) => request.post('/reviews', data),
   getList: (params) => request.get('/reviews', { params }),
   getAdminList: (params) => adminRequest.get('/reviews/admin/list', { params }),
-  reply: (id, replyContent) => adminRequest.put(`/reviews/admin/${id}/reply`, null, { params: { replyContent } }),
+  reply: (id, replyContent) => adminRequest.put(`/reviews/admin/${id}/reply`, { reply: replyContent }),
   toggleVisibility: (id, isHidden) => adminRequest.put(`/reviews/admin/${id}/hidden`, null, { params: { isHidden } }),
   deleteReview: (id) => adminRequest.delete(`/reviews/admin/${id}`)
 }

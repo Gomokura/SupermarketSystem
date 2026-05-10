@@ -49,6 +49,16 @@ public class PointsController {
             @RequestParam(defaultValue = "20") Integer pageSize) {
         return pointsService.getUserPointsLogs(userId, pageNum, pageSize);
     }
+
+    /** 管理员初始化用户积分（根据订单历史） POST /points/admin/initialize */
+    @PostMapping("/admin/initialize")
+    public Result<?> initializePoints(@RequestAttribute Integer adminId) {
+        // 验证管理员权限
+        if (adminId == null) {
+            return Result.error("未授权");
+        }
+        return pointsService.initializePointsFromOrders();
+    }
 }
 
 

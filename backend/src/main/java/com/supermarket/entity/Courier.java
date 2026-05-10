@@ -29,4 +29,6 @@ public class Courier {
     private Integer todayCount;
     @TableField(exist = false)
     private Integer isDisabled;
+    @TableField(exist = false)
+    private Boolean isOnline;
 }

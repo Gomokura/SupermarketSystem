@@ -118,9 +118,16 @@ const routes = [
   // ==========================================
   {
     path: '/courier',
-    name: 'CourierTasks',
-    component: () => import('@/views/courier/Tasks.vue'),
-    meta: { layout: 'mobile', role: 'courier' }
+    component: () => import('@/views/courier/Layout.vue'),
+    meta: { layout: 'none', role: 'courier' },
+    children: [
+      {
+        path: '',
+        name: 'CourierTasks',
+        component: () => import('@/views/courier/Tasks.vue'),
+        meta: { role: 'courier' }
+      }
+    ]
   },
   // ==========================================
   // 管理后台（Admin Layout）

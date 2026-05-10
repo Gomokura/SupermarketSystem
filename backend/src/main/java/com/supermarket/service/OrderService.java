@@ -31,6 +31,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
     @Autowired private OrderStatusLogMapper orderStatusLogMapper;
     @Autowired private DeliveryTaskMapper deliveryTaskMapper;
     @Autowired private CourierMapper courierMapper;
+    @Autowired private PointsService pointsService;
 
     private static final double POINTS_TO_CASH_RATE = 0.01; // 1 point = 0.01 yuan (100积分=1元)
 
@@ -76,8 +77,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         DeliveryTask task = deliveryTaskMapper.selectOne(new LambdaQueryWrapper<DeliveryTask>()
                 .eq(DeliveryTask::getOrderId, orderId));
         if (task != null) {
-            order.setPickupTime(task.getPickupTime());
-            order.setDeliverTime(task.getDeliverTime());
+            fillOrderDeliveryInfo(order, task);
         }
         return Result.success(order);
     }
@@ -321,6 +321,13 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         order.setStatus("PENDING_SHIP");
         this.updateById(order);
         writeStatusLog(orderId, from, "PENDING_SHIP", "USER", userId, null, "待发货");
+        
+        // 支付成功后，根据支付金额累计积分（1元=1积分）
+        if (order.getPayAmount() != null && order.getPayAmount() > 0) {
+            int pointsToAdd = (int) Math.floor(order.getPayAmount());
+            pointsService.addPoints(userId, pointsToAdd, "ORDER_PAY", orderId);
+        }
+        
         return Result.success("支付成功");
     }
 
@@ -402,8 +409,7 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         DeliveryTask task = deliveryTaskMapper.selectOne(new LambdaQueryWrapper<DeliveryTask>()
                 .eq(DeliveryTask::getOrderId, orderId));
         if (task != null) {
-            order.setPickupTime(task.getPickupTime());
-            order.setDeliverTime(task.getDeliverTime());
+            fillOrderDeliveryInfo(order, task);
         }
         return Result.success(order);
     }
@@ -556,6 +562,15 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
         Order order = new Order();
         order.setOrderNo(orderNo);
         order.setUserId(userId);  // 收银会员ID（可为null表示散客）
+        if (userId != null) {
+            User user = userMapper.selectById(userId);
+            if (user != null) {
+                String name = user.getNickname();
+                if (name == null || name.isBlank()) name = user.getRealName();
+                if (name == null || name.isBlank()) name = user.getUsername();
+                order.setReceiverSnapshot(name + " " + user.getPhone() + " 门店收银");
+            }
+        }
         order.setTotalAmount(totalAmount);
         order.setDiscountAmount(0.0);
         order.setCouponDiscount(0.0);
@@ -726,6 +741,22 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
             }
         }
         // 订单金额字段不回写（保留历史）
+    }
+
+    private void fillOrderDeliveryInfo(Order order, DeliveryTask task) {
+        order.setDeliveryTaskId(task.getTaskId());
+        order.setDeliveryStatus(task.getStatus());
+        order.setPickupTime(task.getPickupTime());
+        order.setDeliverTime(task.getDeliverTime());
+        order.setDeliveryFailReason(task.getFailReason());
+
+        if (task.getCourierId() != null) {
+            Courier courier = courierMapper.selectById(task.getCourierId());
+            if (courier != null) {
+                order.setCourierName(courier.getCourierName());
+                order.setCourierPhone(courier.getPhone());
+            }
+        }
     }
 
     private void markUserCouponUsed(Integer ucId, Integer orderId) {

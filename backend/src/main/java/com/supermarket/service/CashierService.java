@@ -30,6 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,6 +50,7 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
     private final OrderItemMapper orderItemMapper;
     private final OrderService orderService;
     private final CashierShiftMapper cashierShiftMapper;
+    private final PointsService pointsService;
 
     public CashierService(CashierRecordMapper cashierRecordMapper,
                           CashierRecordItemMapper cashierRecordItemMapper,
@@ -58,7 +62,8 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
                           OrderMapper orderMapper,
                           OrderItemMapper orderItemMapper,
                           OrderService orderService,
-                          CashierShiftMapper cashierShiftMapper) {
+                          CashierShiftMapper cashierShiftMapper,
+                          PointsService pointsService) {
         this.cashierRecordMapper = cashierRecordMapper;
         this.cashierRecordItemMapper = cashierRecordItemMapper;
         this.productMapper = productMapper;
@@ -70,6 +75,7 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
         this.orderItemMapper = orderItemMapper;
         this.orderService = orderService;
         this.cashierShiftMapper = cashierShiftMapper;
+        this.pointsService = pointsService;
     }
 
     /** 开班 */
@@ -150,6 +156,101 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
         return Result.success(list);
     }
 
+    /** 收银端首页概览 */
+    public Result<?> getDashboard(Integer cashierId) {
+        return Result.success(buildReport(cashierId, new Date()));
+    }
+
+    /** 收银员日结报表 */
+    public Result<?> getDailyReport(Integer cashierId) {
+        return Result.success(buildReport(cashierId, new Date()));
+    }
+
+    private Map<String, Object> buildReport(Integer cashierId, Date date) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        Date startOfDay = calendar.getTime();
+        calendar.add(Calendar.DAY_OF_MONTH, 1);
+        Date endOfDay = calendar.getTime();
+
+        List<CashierRecord> todayRecords = cashierRecordMapper.selectList(new LambdaQueryWrapper<CashierRecord>()
+                .eq(CashierRecord::getCashierId, cashierId)
+                .ge(CashierRecord::getCreateTime, startOfDay)
+                .lt(CashierRecord::getCreateTime, endOfDay)
+                .orderByDesc(CashierRecord::getCreateTime));
+
+        double todaySales = 0.0;
+        double cashAmount = 0.0;
+        double scanAmount = 0.0;
+        for (CashierRecord record : todayRecords) {
+            double amount = record.getPayAmount() != null ? record.getPayAmount() : 0.0;
+            todaySales += amount;
+            if ("CASH".equalsIgnoreCase(record.getPayMethod())) {
+                cashAmount += amount;
+            } else {
+                scanAmount += amount;
+            }
+        }
+
+        List<Map<String, Object>> recentOrders = new ArrayList<>();
+        List<CashierRecord> recentRecords = cashierRecordMapper.selectList(new LambdaQueryWrapper<CashierRecord>()
+                .eq(CashierRecord::getCashierId, cashierId)
+                .orderByDesc(CashierRecord::getCreateTime)
+                .last("FETCH FIRST 8 ROWS ONLY"));
+        for (CashierRecord record : todayRecords) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("recordId", record.getRecordId());
+            item.put("memberPhone", record.getMemberPhone());
+            item.put("payAmount", record.getPayAmount());
+            item.put("payMethod", record.getPayMethod());
+            item.put("createTime", record.getCreateTime());
+            List<CashierRecordItem> items = cashierRecordItemMapper.selectList(new LambdaQueryWrapper<CashierRecordItem>()
+                    .eq(CashierRecordItem::getRecordId, record.getRecordId()));
+            item.put("items", items);
+            item.put("itemSummary", items.stream()
+                    .limit(2)
+                    .map(i -> i.getProductName() + " x" + i.getQuantity())
+                    .reduce((a, b) -> a + "，" + b)
+                    .orElse("收银订单"));
+            recentOrders.add(item);
+        }
+
+        Map<String, Map<String, Object>> hotMap = new LinkedHashMap<>();
+        for (CashierRecord record : recentRecords) {
+            List<CashierRecordItem> items = cashierRecordItemMapper.selectList(new LambdaQueryWrapper<CashierRecordItem>()
+                    .eq(CashierRecordItem::getRecordId, record.getRecordId()));
+            for (CashierRecordItem row : items) {
+                String key = String.valueOf(row.getProductId());
+                Map<String, Object> hot = hotMap.computeIfAbsent(key, ignored -> {
+                    Map<String, Object> value = new HashMap<>();
+                    value.put("productName", row.getProductName());
+                    value.put("quantity", 0);
+                    value.put("amount", 0.0);
+                    return value;
+                });
+                hot.put("quantity", ((Number) hot.get("quantity")).intValue() + (row.getQuantity() != null ? row.getQuantity() : 0));
+                hot.put("amount", ((Number) hot.get("amount")).doubleValue() + (row.getSubtotal() != null ? row.getSubtotal() : 0.0));
+            }
+        }
+        List<Map<String, Object>> hotProducts = new ArrayList<>(hotMap.values());
+        hotProducts.sort(Comparator.comparingInt(v -> -((Number) v.get("quantity")).intValue()));
+        if (hotProducts.size() > 5) hotProducts = hotProducts.subList(0, 5);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("todayOrderCount", todayRecords.size());
+        data.put("todaySales", Math.round(todaySales * 100.0) / 100.0);
+        data.put("cashAmount", Math.round(cashAmount * 100.0) / 100.0);
+        data.put("scanAmount", Math.round(scanAmount * 100.0) / 100.0);
+        data.put("reportDate", startOfDay);
+        data.put("recentOrders", recentOrders);
+        data.put("hotProducts", hotProducts);
+        return data;
+    }
+
     /** K-05: 搜索商品（支持 keyword 或 barcode） */
     public Result<?> searchProducts(String keywordOrBarcode, Integer limit) {
         int n = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
@@ -173,6 +274,7 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
                               Integer couponId,
                               String payMethod,
                               Double receivedAmount,
+                              Integer requestedPointsUsed,
                               List<Map<String, Object>> items) {
         CashierShift shift = (CashierShift) getCurrentShift(cashierId).getData();
         if (shift == null) throw new BusinessException("请先开班");
@@ -207,7 +309,8 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
             orderItems.add(it);
         }
         // 2) 创建收银订单（订单侧不做会员券抵扣，券抵扣走 cashier_records 展示；库存仍以订单出库为准）
-        Result<?> orderRet = orderService.cashierCreateOrder(cashierId, userId, orderItems, payMethod, receivedAmount);
+        String normalizedPayMethod = normalizeCashierPayMethod(payMethod);
+        Result<?> orderRet = orderService.cashierCreateOrder(cashierId, userId, orderItems, normalizedPayMethod, receivedAmount);
         if (orderRet.getCode() != 200) {
             throw new BusinessException(orderRet.getMessage());
         }
@@ -222,7 +325,7 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
             throw new BusinessException("订单数据异常");
         }
 
-        // 3) 计算优惠券抵扣（POS 场景：折扣直接从 totalAmount 减）
+        // 3) 计算优惠券和积分抵扣（POS 场景：折扣直接从 totalAmount 减）
         double discountAmount = 0.0;
         if (userId != null && couponId != null && ucId != null && totalAmount != null) {
             var c = couponMapper.selectById(couponId);
@@ -240,10 +343,21 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
             }
         }
         discountAmount = Math.round(discountAmount * 100.0) / 100.0;
-        double payAmount = Math.max(0, (totalAmount != null ? totalAmount : 0.0) - discountAmount);
+        int pointsUsed = 0;
+        double pointsDeductAmount = 0.0;
+        if (userId != null && requestedPointsUsed != null && requestedPointsUsed > 0 && totalAmount != null) {
+            User user = userMapper.selectById(userId);
+            int availablePoints = user != null && user.getPoints() != null ? user.getPoints() : 0;
+            double pointsBase = Math.max(0, totalAmount - discountAmount);
+            int maxPointsByRule = (int) Math.floor((pointsBase * 0.2) / 0.01);
+            pointsUsed = Math.min(requestedPointsUsed, Math.min(availablePoints, maxPointsByRule));
+            pointsDeductAmount = Math.round(pointsUsed * 0.01 * 100.0) / 100.0;
+        }
+        double totalDiscountAmount = Math.round((discountAmount + pointsDeductAmount) * 100.0) / 100.0;
+        double payAmount = Math.max(0, (totalAmount != null ? totalAmount : 0.0) - totalDiscountAmount);
 
         double change = 0.0;
-        if ("CASH".equalsIgnoreCase(payMethod)) {
+        if ("CASH".equalsIgnoreCase(normalizedPayMethod)) {
             if (receivedAmount == null) throw new BusinessException("现金支付必须填写实收金额");
             if (receivedAmount < payAmount) throw new BusinessException("实收金额不足");
             change = Math.round((receivedAmount - payAmount) * 100.0) / 100.0;
@@ -255,17 +369,30 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
         record.setUserId(userId);
         record.setMemberPhone(memberSnapshot);
         record.setTotalAmount(totalAmount);
-        record.setDiscountAmount(discountAmount);
+        record.setDiscountAmount(totalDiscountAmount);
         record.setCouponId(couponId);
         record.setUcId(ucId);
         record.setPayAmount(payAmount);
-        record.setPayMethod(payMethod != null ? payMethod : "CASH");
+        record.setPayMethod(normalizedPayMethod);
         record.setReceivedAmount(receivedAmount);
         record.setChangeAmount(change);
         record.setCashierId(cashierId);
         record.setCreateTime(new Date());
         record.setRecordId(cashierRecordMapper.getNextId());
         cashierRecordMapper.insert(record);
+
+        if (pointsUsed > 0) {
+            pointsService.deductPoints(userId, pointsUsed, "CASHIER_DEDUCT", orderId, cashierId);
+            Order order = orderMapper.selectById(orderId);
+            if (order != null) {
+                order.setPointsUsed(pointsUsed);
+                order.setPointsDeductAmount(pointsDeductAmount);
+                order.setDiscountAmount(totalDiscountAmount);
+                order.setPayAmount(payAmount);
+                order.setUpdateTime(new Date());
+                orderMapper.updateById(order);
+            }
+        }
 
         for (CreateOrderRequest.CartItem it : orderItems) {
             Product p = productMapper.selectById(it.getProductId());
@@ -293,14 +420,16 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
         }
 
         // 5) 班次统计
-        recordShiftOrder(cashierId, payMethod, payAmount);
+        recordShiftOrder(cashierId, normalizedPayMethod, payAmount);
 
         Map<String, Object> data = new HashMap<>();
         data.put("orderId", orderId);
         data.put("recordId", record.getRecordId());
         data.put("orderNo", orderData != null ? orderData.get("orderNo") : null);
         data.put("totalAmount", totalAmount);
-        data.put("discountAmount", discountAmount);
+        data.put("discountAmount", totalDiscountAmount);
+        data.put("pointsUsed", pointsUsed);
+        data.put("pointsDeductAmount", pointsDeductAmount);
         data.put("payAmount", payAmount);
         data.put("receivedAmount", receivedAmount);
         data.put("changeAmount", change);
@@ -327,7 +456,15 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
         LambdaQueryWrapper<Order> w = new LambdaQueryWrapper<>();
         w.eq(Order::getSource, "CASHIER");
         if (orderNo != null && !orderNo.isEmpty()) w.eq(Order::getOrderNo, orderNo);
-        if (phone != null && !phone.isEmpty()) w.eq(Order::getReceiverPhone, phone);
+        if (phone != null && !phone.isEmpty()) {
+            User user = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getPhone, phone));
+            if (user == null) {
+                page.setRecords(new ArrayList<>());
+                page.setTotal(0);
+                return Result.success(page);
+            }
+            w.eq(Order::getUserId, user.getUserId());
+        }
         w.orderByDesc(Order::getCreateTime);
         orderMapper.selectPage(page, w);
         // 填充 items
@@ -335,6 +472,7 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
             List<OrderItem> items = orderItemMapper.selectList(
                     new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, o.getOrderId()));
             o.setItems(items);
+            fillCashierOrderCustomer(o);
         }
         return Result.success(page);
     }
@@ -348,5 +486,36 @@ public class CashierService extends ServiceImpl<CashierShiftMapper, CashierShift
         if (order == null) return Result.error(404, "订单不存在");
         if (!"COMPLETED".equals(order.getStatus())) return Result.error("只有已完成订单可退款");
         return orderService.refundCashierOrder(order.getOrderId(), cashierId, reason);
+    }
+
+    private String normalizeCashierPayMethod(String payMethod) {
+        if (payMethod == null || payMethod.isBlank()) return "CASH";
+        String pm = payMethod.toUpperCase();
+        if ("MOCK".equals(pm) || "MOCK_CARD".equals(pm) || "SCAN".equals(pm)) return "ALIPAY";
+        if (pm.matches("^(CASH|WECHAT|ALIPAY|MEMBER_CARD)$")) return pm;
+        return "CASH";
+    }
+
+    private void fillCashierOrderCustomer(Order order) {
+        if (order == null) return;
+        if (order.getReceiverSnapshot() != null && !order.getReceiverSnapshot().isBlank()) {
+            String[] parts = order.getReceiverSnapshot().trim().split("\\s+", 3);
+            if (parts.length > 0) order.setReceiverName(parts[0]);
+            if (parts.length > 1) order.setReceiverPhone(parts[1]);
+            if (parts.length > 2) order.setReceiverAddress(parts[2]);
+            return;
+        }
+        if (order.getUserId() == null) {
+            order.setReceiverName("散客");
+            return;
+        }
+        User user = userMapper.selectById(order.getUserId());
+        if (user != null) {
+            String name = user.getNickname();
+            if (name == null || name.isBlank()) name = user.getRealName();
+            if (name == null || name.isBlank()) name = user.getUsername();
+            order.setReceiverName(name);
+            order.setReceiverPhone(user.getPhone());
+        }
     }
 }

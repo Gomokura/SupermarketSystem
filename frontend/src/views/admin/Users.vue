@@ -25,6 +25,7 @@
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="resetFilter">重置</el-button>
+          <el-button @click="exportUsers" style="margin-left:8px">📊 导出Excel</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -142,6 +143,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminAPI, pointsAPI } from '@/api'
+import { exportToExcel } from '@/utils/exportUtils'
 import axios from 'axios'
 
 const loading = ref(false)
@@ -253,6 +255,38 @@ const submitSendMsg = async () => {
     msgVisible.value = false
   } catch {
     ElMessage.error('发送失败')
+  }
+}
+
+const exportUsers = () => {
+  if (users.value.length === 0) {
+    ElMessage.warning('没有数据可导出')
+    return
+  }
+  
+  const columns = [
+    { label: 'ID', prop: 'userId' },
+    { label: '用户名', prop: 'username' },
+    { label: '手机号', prop: 'phone' },
+    { label: '会员等级', prop: 'memberLevel' },
+    { label: '积分', prop: 'points' },
+    { label: '消费金额', prop: 'totalSpent' },
+    { label: '订单数', prop: 'orderCount' },
+    { label: '状态', prop: 'status' },
+    { label: '注册时间', prop: 'createTime' }
+  ]
+  
+  const exportData = users.value.map(user => ({
+    ...user,
+    status: user.status === 'active' ? '正常' : '封禁',
+    createTime: formatDate(user.createTime)
+  }))
+  
+  try {
+    exportToExcel(exportData, columns, '用户管理')
+    ElMessage.success('用户列表已导出')
+  } catch (e) {
+    ElMessage.error('导出失败')
   }
 }
 </script>

@@ -37,6 +37,7 @@
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="resetFilter">重置</el-button>
+          <el-button type="success" @click="exportOrders" style="margin-left: 8px">📊 导出Excel</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -155,7 +156,7 @@
     <!-- B-18 分配配送员 Dialog -->
     <el-dialog v-model="assignVisible" title="分配配送员" width="480px">
       <el-select v-model="selectedCourierId" placeholder="请选择配送员" style="width:100%">
-        <el-option v-for="c in couriers" :key="c.courierId" :label="`${c.realName}（${c.phone}）`" :value="c.courierId" />
+        <el-option v-for="c in couriers" :key="c.courierId" :label="`${c.courierName}（${c.phone}）`" :value="c.courierId" />
       </el-select>
       <template #footer>
         <el-button @click="assignVisible = false">取消</el-button>
@@ -169,6 +170,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminAPI, orderAPI, courierAPI } from '@/api'
+import { exportToExcel } from '@/utils/exportUtils'
 
 const loading = ref(false)
 const orders = ref([])
@@ -316,6 +318,39 @@ const forceCancel = async (row) => {
     loadOrders()
   } catch (e) {
     if (e !== 'cancel') ElMessage.error('操作失败')
+  }
+}
+
+const exportOrders = () => {
+  if (orders.value.length === 0) {
+    ElMessage.warning('没有数据可导出')
+    return
+  }
+  
+  const columns = [
+    { label: '订单号', prop: 'orderId' },
+    { label: '用户', prop: 'username' },
+    { label: '手机号', prop: 'phone' },
+    { label: '金额', prop: 'payAmount' },
+    { label: '状态', prop: 'status' },
+    { label: '支付方式', prop: 'payMethod' },
+    { label: '来源', prop: 'source' },
+    { label: '下单时间', prop: 'createTime' }
+  ]
+  
+  // 格式化数据
+  const exportData = orders.value.map(order => ({
+    ...order,
+    status: statusText(order.status),
+    source: order.source === 'CASHIER' ? '收银台' : '线上',
+    createTime: formatDate(order.createTime)
+  }))
+  
+  try {
+    exportToExcel(exportData, columns, '订单管理')
+    ElMessage.success('订单已导出')
+  } catch (e) {
+    ElMessage.error('导出失败')
   }
 }
 </script>

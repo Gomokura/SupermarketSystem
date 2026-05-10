@@ -23,7 +23,7 @@
           </el-form-item>
         </div>
         <el-form-item>
-          <el-button type="primary" @click="submitAll">提交全部评价</el-button>
+          <el-button type="primary" :loading="submitting" :disabled="submitting" @click="submitAll">提交全部评价</el-button>
           <el-button @click="$router.push('/orders')">取消</el-button>
         </el-form-item>
       </el-form>
@@ -39,15 +39,17 @@ const route = useRoute()
 const router = useRouter()
 const order = ref(null)
 const reviewsData = ref([])
+const submitting = ref(false)
 onMounted(async () => {
   const orderId = route.params.orderId
   if (!orderId) return router.push("/orders")
   try {
     const res = await orderAPI.getDetail(orderId)
     order.value = res.data
-    // Initialize form states
+    // Initialize form states - 现在包含 orderItemId
     reviewsData.value = order.value.items.map(item => ({
       orderId: order.value.orderId,
+      orderItemId: item.itemId,        // 添加这行
       productId: item.productId,
       rating: 5,
       content: "",
@@ -58,12 +60,14 @@ onMounted(async () => {
   }
 })
 const submitAll = async () => {
+  if (submitting.value) return
   try {
     // Validate
     const invalid = reviewsData.value.find(r => !r.rating || !r.content.trim())
     if (invalid) {
       return ElMessage.warning("请为所有商品填写评分和评价内容")
     }
+    submitting.value = true
     // Submit each sequentially (or via backend batch if available, but API docs only show single submit)
     for (const data of reviewsData.value) {
       await reviewsAPI.submit(data)
@@ -72,6 +76,8 @@ const submitAll = async () => {
     router.push("/orders")
   } catch (e) {
     console.error(e)
+  } finally {
+    submitting.value = false
   }
 }
 </script>

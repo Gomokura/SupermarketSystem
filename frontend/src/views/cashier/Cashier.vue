@@ -15,7 +15,27 @@
       <div class="top-actions">
         <el-button size="small" @click="showHistoryDialog = true">历史班次</el-button>
         <el-button size="small" @click="showOrderHistoryDialog = true">历史订单</el-button>
+        <el-button size="small" type="primary" @click="openDailyReport">日结报表</el-button>
         <el-button type="warning" size="small" :disabled="!currentShift" @click="showCloseShiftDialog = true">交班</el-button>
+      </div>
+    </div>
+
+    <div class="dashboard-strip">
+      <div class="metric-card">
+        <span>今日营业额</span>
+        <strong>¥{{ dashboard.todaySales.toFixed(2) }}</strong>
+      </div>
+      <div class="metric-card">
+        <span>今日订单</span>
+        <strong>{{ dashboard.todayOrderCount }}</strong>
+      </div>
+      <div class="metric-card">
+        <span>现金收款</span>
+        <strong>¥{{ dashboard.cashAmount.toFixed(2) }}</strong>
+      </div>
+      <div class="metric-card">
+        <span>扫码收款</span>
+        <strong>¥{{ dashboard.scanAmount.toFixed(2) }}</strong>
       </div>
     </div>
 
@@ -40,6 +60,16 @@
             </template>
           </el-input>
           <div class="search-hint">输入条码后可自动识别商品</div>
+          <div class="demo-barcodes">
+            <span class="demo-label">演示条码</span>
+            <el-tag
+              v-for="code in demoBarcodes"
+              :key="code"
+              class="demo-barcode"
+              size="small"
+              @click="useDemoBarcode(code)"
+            >{{ code }}</el-tag>
+          </div>
 
           <!-- 搜索结果 -->
           <div class="search-results" v-if="searchResults.length > 0">
@@ -78,6 +108,16 @@
               <el-button @click="searchMember">查询</el-button>
             </template>
           </el-input>
+          <div class="demo-members">
+            <span class="demo-label">演示会员</span>
+            <el-tag
+              v-for="item in demoMembers"
+              :key="item.phone"
+              class="demo-member"
+              size="small"
+              @click="useDemoMember(item.phone)"
+            >{{ item.name }} {{ item.phone }}</el-tag>
+          </div>
           <div class="member-info" v-if="member">
             <el-descriptions :column="2" size="small" border>
               <el-descriptions-item label="会员">{{ member.nickname || member.name }}</el-descriptions-item>
@@ -86,6 +126,19 @@
               <el-descriptions-item label="可用优惠券">{{ member.availableCouponCount ?? member.couponCount ?? 0 }} 张</el-descriptions-item>
             </el-descriptions>
           </div>
+        </el-card>
+
+        <el-card class="quick-data-card">
+          <div class="search-header">
+            <span class="section-title">热销商品</span>
+          </div>
+          <div class="hot-list" v-if="dashboard.hotProducts.length">
+            <div class="hot-row" v-for="item in dashboard.hotProducts" :key="item.productName">
+              <span>{{ item.productName }}</span>
+              <strong>{{ item.quantity }} 件</strong>
+            </div>
+          </div>
+          <el-empty v-else description="暂无热销数据" :image-size="50" />
         </el-card>
       </div>
 
@@ -138,7 +191,7 @@
               <span class="total-price">¥{{ totalAmount.toFixed(2) }}</span>
             </div>
             <div class="summary-row" v-if="member">
-              <span>可用积分抵扣</span>
+              <span>积分抵扣（{{ pointsToUse }} 积分）</span>
               <span>- ¥{{ pointsDiscount.toFixed(2) }}</span>
             </div>
             <div class="summary-row final" v-if="member">
@@ -149,10 +202,32 @@
 
           <!-- 操作按钮 -->
           <div class="cart-actions">
+            <el-button size="large" :disabled="cartItems.length === 0" @click="openReceiptPreview(false)">
+              小票预览
+            </el-button>
             <el-button type="primary" size="large" :disabled="cartItems.length === 0" @click="showCheckoutDialog = true">
               结账 (¥{{ (member ? finalAmount : totalAmount).toFixed(2) }})
             </el-button>
           </div>
+        </el-card>
+
+        <el-card class="recent-card">
+          <template #header>
+            <div class="cart-header">
+              <span class="section-title">最近收银</span>
+              <el-button text type="primary" size="small" @click="searchOrders(); showOrderHistoryDialog = true">全部</el-button>
+            </div>
+          </template>
+          <div class="recent-list" v-if="dashboard.recentOrders.length">
+            <div class="recent-row" v-for="row in dashboard.recentOrders" :key="row.recordId">
+              <div>
+                <div class="recent-title">{{ row.itemSummary }}</div>
+                <div class="recent-sub">{{ row.memberPhone || '散客' }} · {{ getPayMethodText(row.payMethod) }}</div>
+              </div>
+              <strong>¥{{ Number(row.payAmount || 0).toFixed(2) }}</strong>
+            </div>
+          </div>
+          <el-empty v-else description="暂无收银记录" :image-size="60" />
         </el-card>
       </div>
     </div>
@@ -179,7 +254,7 @@
         </div>
         <div class="checkout-member" v-if="member">
           <span class="label">会员：{{ member.nickname || member.name }}</span>
-          <span class="label">积分抵扣：-¥{{ pointsDiscount.toFixed(2) }}</span>
+          <span class="label">使用 {{ pointsToUse }} 积分：-¥{{ pointsDiscount.toFixed(2) }}</span>
         </div>
       </div>
 
@@ -310,14 +385,18 @@
       </el-form>
       <el-table :data="orderHistory" size="small" v-loading="orderHistoryLoading">
         <el-table-column prop="orderNo" label="订单号" width="180" show-overflow-tooltip />
-        <el-table-column prop="customerName" label="顾客" width="100" />
-        <el-table-column prop="phone" label="手机号" width="120" />
-        <el-table-column prop="totalAmount" label="金额" width="100" align="right">
-          <template #default="{ row }">¥{{ row.totalAmount }}</template>
+        <el-table-column label="顾客" width="100">
+          <template #default="{ row }">{{ row.receiverName || row.username || '散客' }}</template>
+        </el-table-column>
+        <el-table-column label="手机号" width="120">
+          <template #default="{ row }">{{ row.receiverPhone || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="金额" width="100" align="right">
+          <template #default="{ row }">¥{{ row.payAmount ?? row.totalAmount }}</template>
         </el-table-column>
         <el-table-column prop="payMethod" label="支付方式" width="100">
           <template #default="{ row }">
-            <el-tag size="small">{{ row.payMethod === 'CASH' ? '现金' : '扫码' }}</el-tag>
+            <el-tag size="small">{{ getPayMethodText(row.payMethod) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
@@ -358,7 +437,76 @@
         </div>
       </div>
       <template #footer>
+        <el-button @click="openReceiptPreview(true)">查看小票</el-button>
         <el-button type="primary" @click="showSuccessDialog = false">继续收银</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showReceiptDialog" title="小票预览" width="420">
+      <div class="receipt">
+        <div class="receipt-title">好邻里超市</div>
+        <div class="receipt-line">单号：{{ receiptData.orderNo || '未结账预览' }}</div>
+        <div class="receipt-line">时间：{{ receiptData.time }}</div>
+        <div class="receipt-line">会员：{{ receiptData.memberName || '散客' }}</div>
+        <div class="receipt-divider"></div>
+        <div class="receipt-row" v-for="item in receiptData.items" :key="item.name">
+          <span>{{ item.name }} x{{ item.quantity }}</span>
+          <strong>¥{{ (item.price * item.quantity).toFixed(2) }}</strong>
+        </div>
+        <div class="receipt-divider"></div>
+        <div class="receipt-row">
+          <span>商品数量</span>
+          <strong>{{ receiptData.quantity }} 件</strong>
+        </div>
+        <div class="receipt-row">
+          <span>合计金额</span>
+          <strong>¥{{ receiptData.total.toFixed(2) }}</strong>
+        </div>
+        <div class="receipt-row" v-if="receiptData.discount > 0">
+          <span>积分抵扣</span>
+          <strong>-¥{{ receiptData.discount.toFixed(2) }}</strong>
+        </div>
+        <div class="receipt-row receipt-pay">
+          <span>实付金额</span>
+          <strong>¥{{ receiptData.payAmount.toFixed(2) }}</strong>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showReceiptDialog = false">关闭</el-button>
+        <el-button type="primary" @click="printReceipt">打印</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showDailyReportDialog" title="收银员日结报表" width="720">
+      <div class="report-grid">
+        <div class="report-card">
+          <span>营业额</span>
+          <strong>¥{{ dailyReport.todaySales.toFixed(2) }}</strong>
+        </div>
+        <div class="report-card">
+          <span>订单数</span>
+          <strong>{{ dailyReport.todayOrderCount }}</strong>
+        </div>
+        <div class="report-card">
+          <span>现金</span>
+          <strong>¥{{ dailyReport.cashAmount.toFixed(2) }}</strong>
+        </div>
+        <div class="report-card">
+          <span>扫码</span>
+          <strong>¥{{ dailyReport.scanAmount.toFixed(2) }}</strong>
+        </div>
+      </div>
+      <el-divider>热销商品</el-divider>
+      <el-table :data="dailyReport.hotProducts" size="small" max-height="220">
+        <el-table-column prop="productName" label="商品" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="quantity" label="数量" width="90" align="center" />
+        <el-table-column prop="amount" label="销售额" width="120" align="right">
+          <template #default="{ row }">¥{{ Number(row.amount || 0).toFixed(2) }}</template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="showDailyReportDialog = false">关闭</el-button>
+        <el-button type="primary" @click="printReceipt">打印报表</el-button>
       </template>
     </el-dialog>
   </div>
@@ -387,6 +535,8 @@ const showCloseShiftDialog = ref(false)
 const showHistoryDialog = ref(false)
 const showOrderHistoryDialog = ref(false)
 const showSuccessDialog = ref(false)
+const showReceiptDialog = ref(false)
+const showDailyReportDialog = ref(false)
 
 // 表单
 const openShiftForm = ref({ startCash: 0 })
@@ -412,6 +562,37 @@ const orderHistoryLoading = ref(false)
 const orderHistoryPage = ref(1)
 const orderHistoryPageSize = ref(10)
 const orderHistoryTotal = ref(0)
+const dashboard = ref({
+  todaySales: 0,
+  todayOrderCount: 0,
+  cashAmount: 0,
+  scanAmount: 0,
+  recentOrders: [],
+  hotProducts: []
+})
+const dailyReport = ref({
+  todaySales: 0,
+  todayOrderCount: 0,
+  cashAmount: 0,
+  scanAmount: 0,
+  hotProducts: []
+})
+const receiptData = ref({
+  orderNo: '',
+  time: '',
+  memberName: '',
+  items: [],
+  quantity: 0,
+  total: 0,
+  discount: 0,
+  payAmount: 0
+})
+const demoBarcodes = ['6901234500001', '6901234500002', '6901234500006', '6901234500008']
+const demoMembers = [
+  { name: '银卡会员', phone: '13800138001' },
+  { name: '金卡会员', phone: '13800138002' },
+  { name: '普通会员', phone: '13800138003' }
+]
 
 // ========== 计算属性 ==========
 const totalQuantity = computed(() => cartItems.value.reduce((sum, item) => sum + item.quantity, 0))
@@ -426,6 +607,7 @@ const pointsDiscount = computed(() => {
 })
 const finalAmount = computed(() => Math.max(0, totalAmount.value - pointsDiscount.value))
 const changeAmount = computed(() => cashForm.value.received - (member.value ? finalAmount.value : totalAmount.value))
+const pointsToUse = computed(() => Math.round(pointsDiscount.value * 100))
 
 // ========== 方法 ==========
 // 加载当前班次
@@ -435,6 +617,39 @@ const loadCurrentShift = async () => {
     currentShift.value = res.data
   } catch {
     currentShift.value = null
+  }
+}
+
+const loadDashboard = async () => {
+  try {
+    const res = await cashierAPI.getDashboard()
+    dashboard.value = {
+      todaySales: Number(res.data?.todaySales || 0),
+      todayOrderCount: Number(res.data?.todayOrderCount || 0),
+      cashAmount: Number(res.data?.cashAmount || 0),
+      scanAmount: Number(res.data?.scanAmount || 0),
+      recentOrders: res.data?.recentOrders || [],
+      hotProducts: res.data?.hotProducts || []
+    }
+  } catch {
+    dashboard.value.recentOrders = []
+    dashboard.value.hotProducts = []
+  }
+}
+
+const openDailyReport = async () => {
+  try {
+    const res = await cashierAPI.getDailyReport()
+    dailyReport.value = {
+      todaySales: Number(res.data?.todaySales || 0),
+      todayOrderCount: Number(res.data?.todayOrderCount || 0),
+      cashAmount: Number(res.data?.cashAmount || 0),
+      scanAmount: Number(res.data?.scanAmount || 0),
+      hotProducts: res.data?.hotProducts || []
+    }
+    showDailyReportDialog.value = true
+  } catch {
+    ElMessage.error('日结报表加载失败')
   }
 }
 
@@ -468,6 +683,11 @@ const handleSearch = async () => {
   } catch {
     searchResults.value = []
   }
+}
+
+const useDemoBarcode = (code) => {
+  searchKeyword.value = code
+  handleSearch()
 }
 
 // 添加到购物车
@@ -526,6 +746,11 @@ const searchMember = async () => {
   }
 }
 
+const useDemoMember = (phone) => {
+  memberPhone.value = phone
+  searchMember()
+}
+
 // 开班
 const handleOpenShift = async () => {
   loading.value = true
@@ -554,8 +779,9 @@ const handleCheckout = async () => {
   try {
     const checkoutData = {
       memberPhone: memberPhone.value || undefined,
-      payMethod: payMethod.value === 'cash' ? 'CASH' : 'MOCK_CARD',
+      payMethod: payMethod.value === 'cash' ? 'CASH' : 'ALIPAY',
       receivedAmount: payMethod.value === 'cash' ? cashForm.value.received : undefined,
+      pointsUsed: member.value ? pointsToUse.value : 0,
       items: cartItems.value.map(item => ({
         productId: item.id,
         quantity: item.quantity
@@ -565,6 +791,7 @@ const handleCheckout = async () => {
     const res = await cashierAPI.checkout(checkoutData)
     successOrderNo.value = res.data?.orderNo || res.data?.id || '-'
     successAmount.value = amount.toFixed(2)
+    buildReceipt(successOrderNo.value)
 
     cartItems.value = []
     member.value = null
@@ -575,6 +802,7 @@ const handleCheckout = async () => {
     showSuccessDialog.value = true
 
     await loadCurrentShift()
+    await loadDashboard()
   } catch {
     // error
   } finally {
@@ -636,6 +864,29 @@ const searchOrders = async () => {
   }
 }
 
+const buildReceipt = (orderNo = '') => {
+  const amount = member.value ? finalAmount.value : totalAmount.value
+  receiptData.value = {
+    orderNo,
+    time: new Date().toLocaleString(),
+    memberName: member.value ? (member.value.nickname || member.value.name || memberPhone.value) : '',
+    items: cartItems.value.map(item => ({ ...item })),
+    quantity: totalQuantity.value,
+    total: totalAmount.value,
+    discount: member.value ? pointsDiscount.value : 0,
+    payAmount: amount
+  }
+}
+
+const openReceiptPreview = (useLast = false) => {
+  if (!useLast) buildReceipt()
+  showReceiptDialog.value = true
+}
+
+const printReceipt = () => {
+  window.print()
+}
+
 // 订单退款
 const refundOrder = async (order) => {
   try {
@@ -646,6 +897,7 @@ const refundOrder = async (order) => {
     await cashierAPI.refund(order.orderNo, reason || '')
     ElMessage.success('退款成功')
     searchOrders()
+    loadDashboard()
   } catch (e) {
     if (e !== 'cancel') ElMessage.error('退款失败')
   }
@@ -671,9 +923,22 @@ const getStatusText = (status) => {
   return map[status] || status
 }
 
+const getPayMethodText = (method) => {
+  const map = {
+    CASH: '现金',
+    ALIPAY: '支付宝',
+    WECHAT: '微信',
+    MEMBER_CARD: '会员卡',
+    MOCK_CARD: '模拟支付',
+    MOCK: '模拟支付'
+  }
+  return map[method] || '扫码'
+}
+
 // ========== 初始化 ==========
 onMounted(() => {
   loadCurrentShift()
+  loadDashboard()
 })
 </script>
 
@@ -712,6 +977,33 @@ onMounted(() => {
   gap: 8px;
 }
 
+.dashboard-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.metric-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metric-card span {
+  font-size: 12px;
+  color: #777;
+}
+
+.metric-card strong {
+  font-size: 22px;
+  color: #1f2d3d;
+}
+
 .main-content {
   display: flex;
   gap: 12px;
@@ -734,7 +1026,7 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.search-card, .member-card {
+.search-card, .member-card, .quick-data-card {
   flex-shrink: 0;
 }
 
@@ -755,6 +1047,23 @@ onMounted(() => {
   font-size: 12px;
   color: #999;
   margin-top: 6px;
+}
+
+.demo-barcodes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.demo-label {
+  font-size: 12px;
+  color: #666;
+}
+
+.demo-barcode {
+  cursor: pointer;
 }
 
 .search-results {
@@ -786,6 +1095,45 @@ onMounted(() => {
 .empty-results { padding: 20px 0; }
 
 .member-info { margin-top: 10px; }
+
+.demo-members {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.demo-member {
+  cursor: pointer;
+}
+
+.hot-list, .recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hot-row, .recent-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.hot-row span, .recent-title {
+  color: #333;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hot-row strong, .recent-row strong {
+  color: #409eff;
+  flex-shrink: 0;
+}
 
 /* 收银清单 */
 .cart-card {
@@ -843,13 +1191,24 @@ onMounted(() => {
 .cart-actions {
   margin-top: 16px;
   display: flex;
-  justify-content: flex-end;
+  gap: 10px;
 }
 
 .cart-actions .el-button {
   width: 100%;
   font-size: 16px;
   height: 44px;
+}
+
+.recent-card {
+  margin-top: 12px;
+  flex-shrink: 0;
+}
+
+.recent-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #888;
 }
 
 /* 结账 */
@@ -935,4 +1294,73 @@ onMounted(() => {
 .success-icon { color: #67c23a; }
 .success-info { margin-top: 16px; text-align: center; font-size: 16px; }
 .success-info p { margin: 6px 0; }
+
+.receipt {
+  width: 300px;
+  margin: 0 auto;
+  font-family: Consolas, "Microsoft YaHei", monospace;
+  color: #222;
+}
+
+.receipt-title {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.receipt-line {
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.receipt-divider {
+  border-top: 1px dashed #999;
+  margin: 8px 0;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.receipt-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receipt-pay {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.report-card {
+  background: #f7f9fc;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.report-card span {
+  font-size: 12px;
+  color: #777;
+}
+
+.report-card strong {
+  font-size: 20px;
+  color: #1f2d3d;
+}
 </style>

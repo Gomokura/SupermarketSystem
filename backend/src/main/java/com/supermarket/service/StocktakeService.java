@@ -62,8 +62,8 @@ public class StocktakeService extends ServiceImpl<StocktakeTaskMapper, Stocktake
         task.setTaskId(stocktakeTaskMapper.getNextId());
         task.setCheckNo("IC" + System.currentTimeMillis());
         task.setCreatorId(creatorId);
-        task.setScope(scope);
-        task.setCategoryId("category".equals(scope) ? categoryId : null);
+        task.setScope(toDbScope(scope));
+        task.setCategoryId("category".equalsIgnoreCase(scope) ? categoryId : null);
         task.setStatus("IN_PROGRESS");
         task.setCreateTime(new Date());
         this.save(task);

@@ -1,0 +1,57 @@
+{
+  "name": "supermarket-cashier-system",
+  "version": "1.0.0",
+  "description": "超市收银系统 - 基于Electron的桌面应用",
+  "main": "electron/main.js",
+  "homepage": "./",
+  "author": "Supermarket Team",
+  "license": "MIT",
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview",
+    "electron": "electron .",
+    "electron:dev": "cross-env NODE_ENV=development electron .",
+    "electron:build": "electron-builder",
+    "electron:build:win": "electron-builder --win",
+    "cashier:dev": "npm run dev",
+    "cashier:build": "npm run build && npm run electron:build"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.4",
+    "electron-is-dev": "^2.0.0"
+  },
+  "build": {
+    "appId": "com.supermarket.cashier",
+    "productName": "超市收银系统",
+    "files": [
+      "electron/**/*",
+      "frontend/dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "超市收银系统"
+    }
+  }
+}

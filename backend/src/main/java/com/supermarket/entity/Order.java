@@ -83,4 +83,14 @@ public class Order {
     private String receiverPhone;    // 联系电话（从快照解析）
     @TableField(exist = false)
     private String receiverAddress;  // 收货地址（从快照解析）
+    @TableField(exist = false)
+    private Integer deliveryTaskId;
+    @TableField(exist = false)
+    private String deliveryStatus;
+    @TableField(exist = false)
+    private String courierName;
+    @TableField(exist = false)
+    private String courierPhone;
+    @TableField(exist = false)
+    private String deliveryFailReason;
 }

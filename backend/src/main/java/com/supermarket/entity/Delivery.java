@@ -37,4 +37,6 @@ public class Delivery {
     private String courierName;
     @TableField(exist = false)
     private String courierPhone;
+    @TableField(exist = false)
+    private String orderNo;
 }

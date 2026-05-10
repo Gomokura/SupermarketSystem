@@ -15,7 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.*;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, DeliveryTask> {
@@ -23,12 +27,10 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
     @Autowired private OrderMapper orderMapper;
     @Autowired private CourierMapper courierMapper;
 
-    /** P-02 配送员查看个人信息（含今日已送/累计送单数） */
     public Result<?> getCourierProfile(Integer courierId) {
         Courier courier = courierMapper.selectById(courierId);
         if (courier == null) throw new BusinessException(404, "配送员不存在");
 
-        // 今日已完成单数
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.HOUR_OF_DAY, 0);
         cal.set(Calendar.MINUTE, 0);
@@ -42,70 +44,56 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
                 .ge(DeliveryTask::getDeliverTime, todayStart));
 
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("courierId",   courier.getCourierId());
+        data.put("courierId", courier.getCourierId());
         data.put("courierName", courier.getCourierName());
-        data.put("phone",       courier.getPhone());
-        data.put("status",      courier.getStatus());
-        data.put("todayCount",  todayCount);
-        data.put("totalCount",  courier.getTotalCount() != null ? courier.getTotalCount() : 0);
+        data.put("phone", courier.getPhone());
+        data.put("status", courier.getStatus());
+        data.put("todayCount", todayCount);
+        data.put("totalCount", courier.getTotalCount() != null ? courier.getTotalCount() : 0);
         return Result.success(data);
     }
 
-    /** P-03 配送员修改密码 */
     @Transactional
     public Result<?> changeCourierPassword(Integer courierId, String oldPassword, String newPassword) {
         if (!StringUtils.hasText(oldPassword)) throw new BusinessException("旧密码不能为空");
         if (!StringUtils.hasText(newPassword)) throw new BusinessException("新密码不能为空");
-        if (newPassword.length() < 6)          throw new BusinessException("新密码长度不能少于6位");
+        if (newPassword.length() < 6) throw new BusinessException("新密码长度不能少于 6 位");
 
         Courier courier = courierMapper.selectById(courierId);
         if (courier == null) throw new BusinessException(404, "配送员不存在");
-
         if (!oldPassword.equals(courier.getPassword())) throw new BusinessException("旧密码错误");
 
-        courier.setPassword(newPassword); // 实际生产环境应加密
+        courier.setPassword(newPassword);
         courierMapper.updateById(courier);
         return Result.success();
     }
 
-    /** P-09 历史任务记录（已完成 + 已失败） */
     public Result<?> getHistoryTasks(Integer courierId) {
         LambdaQueryWrapper<DeliveryTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DeliveryTask::getCourierId, courierId)
                 .in(DeliveryTask::getStatus, "DELIVERED", "FAILED")
-                .orderByDesc(DeliveryTask::getDeliverTime);
+                .orderByDesc(DeliveryTask::getDeliverTime)
+                .orderByDesc(DeliveryTask::getPickupTime)
+                .orderByDesc(DeliveryTask::getAssignTime);
         List<DeliveryTask> tasks = this.list(wrapper);
-        for (DeliveryTask t : tasks) {
-            Order order = orderMapper.selectById(t.getOrderId());
-            if (order != null) {
-                t.setOrderNo(order.getOrderNo());
-                t.setAddress(order.getReceiverSnapshot());
-            }
-        }
+        tasks.forEach(this::fillOrderSnapshot);
         return Result.success(tasks);
     }
+
     public Result<?> getMyCourierTasks(Integer courierId, String status) {
         LambdaQueryWrapper<DeliveryTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DeliveryTask::getCourierId, courierId);
-        if (status != null && !status.isEmpty()) {
+        if (StringUtils.hasText(status)) {
             wrapper.eq(DeliveryTask::getStatus, status);
+        } else {
+            wrapper.in(DeliveryTask::getStatus, "ASSIGNED", "PICKED_UP");
         }
         wrapper.orderByDesc(DeliveryTask::getAssignTime);
         List<DeliveryTask> tasks = this.list(wrapper);
-
-        // 填充订单信息
-        for (DeliveryTask t : tasks) {
-            Order order = orderMapper.selectById(t.getOrderId());
-            if (order != null) {
-                t.setOrderNo(order.getOrderNo());
-                // 地址快照直接显示
-                t.setAddress(order.getReceiverSnapshot());
-            }
-        }
+        tasks.forEach(this::fillOrderSnapshot);
         return Result.success(tasks);
     }
 
-    /** 骑手端：取件（开始配送） */
     @Transactional
     public Result<?> pickupTask(Integer taskId, Integer courierId) {
         DeliveryTask task = this.getById(taskId);
@@ -117,7 +105,6 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
         task.setPickupTime(new Date());
         this.updateById(task);
 
-        // 回写订单状态（配送中）
         Order order = orderMapper.selectById(task.getOrderId());
         if (order != null && "PENDING_SHIP".equals(order.getStatus())) {
             order.setStatus("SHIPPING");
@@ -128,7 +115,6 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
         return Result.success();
     }
 
-    /** 骑手端：完成配送 */
     @Transactional
     public Result<?> completeTask(Integer taskId, Integer courierId) {
         DeliveryTask task = this.getById(taskId);
@@ -140,7 +126,6 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
         task.setDeliverTime(new Date());
         this.updateById(task);
 
-        // 更新订单状态为待收货
         Order order = orderMapper.selectById(task.getOrderId());
         if (order != null) {
             if ("SHIPPING".equals(order.getStatus())) {
@@ -151,28 +136,26 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
             orderMapper.updateById(order);
         }
 
-        // 更新骑手累计送达数（使用原子 UPDATE，避免并发问题）
         courierMapper.incrementDelivered(courierId.longValue());
-
         return Result.success();
     }
 
-    /** 骑手端：标记配送失败 */
     @Transactional
     public Result<?> failTask(Integer taskId, Integer courierId, String failReason) {
+        if (!StringUtils.hasText(failReason)) throw new BusinessException("请填写配送异常原因");
+
         DeliveryTask task = this.getById(taskId);
         if (task == null) throw new BusinessException(404, "配送任务不存在");
         if (!task.getCourierId().equals(courierId)) throw new BusinessException(403, "无权操作");
-        if (!"PICKED_UP".equals(task.getStatus())) throw new BusinessException("任务状态不允许标记失败");
+        if (!"PICKED_UP".equals(task.getStatus())) throw new BusinessException("任务状态不允许标记异常");
 
         task.setStatus("FAILED");
         task.setFailReason(failReason);
         this.updateById(task);
 
-        // 回写 Order 失败原因 + 状态（不在 v3 状态枚举中，这里只记录 remark，不强行改状态）
         Order order = orderMapper.selectById(task.getOrderId());
         if (order != null) {
-            order.setRemark((order.getRemark() != null ? order.getRemark() + " | " : "") + "配送失败：" + failReason);
+            order.setRemark((order.getRemark() != null ? order.getRemark() + " | " : "") + "配送异常：" + failReason);
             order.setUpdateTime(new Date());
             orderMapper.updateById(order);
         }
@@ -180,13 +163,29 @@ public class DeliveryTaskService extends ServiceImpl<DeliveryTaskMapper, Deliver
         return Result.success();
     }
 
-    /** 骑手端：更新在线状态 */
     @Transactional
     public Result<?> updateOnlineStatus(Integer courierId, String status) {
+        if (!"online".equals(status) && !"offline".equals(status) && !"active".equals(status)) {
+            throw new BusinessException("配送员状态不合法");
+        }
         Courier courier = courierMapper.selectById(courierId);
-        if (courier == null) throw new BusinessException(404, "骑手不存在");
+        if (courier == null) throw new BusinessException(404, "配送员不存在");
         courier.setStatus(status);
         courierMapper.updateById(courier);
         return Result.success();
+    }
+
+    private void fillOrderSnapshot(DeliveryTask task) {
+        Order order = orderMapper.selectById(task.getOrderId());
+        if (order == null) return;
+
+        task.setOrderNo(order.getOrderNo());
+        String snapshot = order.getReceiverSnapshot();
+        if (!StringUtils.hasText(snapshot)) return;
+
+        String[] parts = snapshot.trim().split("\\s+", 3);
+        if (parts.length > 0) task.setReceiverName(parts[0]);
+        if (parts.length > 1) task.setReceiverPhone(parts[1]);
+        task.setAddress(parts.length > 2 ? parts[2] : snapshot);
     }
 }

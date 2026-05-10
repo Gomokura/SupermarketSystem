@@ -6,10 +6,10 @@
       <el-form :inline="true">
         <el-form-item label="状态">
           <el-select v-model="statusFilter" placeholder="全部" clearable style="width:140px" @change="loadDeliveries">
-            <el-option label="待接单" value="PENDING" />
-            <el-option label="配送中" value="DELIVERING" />
-            <el-option label="已完成" value="DELIVERED" />
-            <el-option label="失败" value="FAILED" />
+            <el-option label="待取件" value="ASSIGNED" />
+            <el-option label="配送中" value="PICKED_UP" />
+            <el-option label="已送达" value="DELIVERED" />
+            <el-option label="配送失败" value="FAILED" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -20,7 +20,9 @@
 
     <el-table :data="deliveries" border>
       <el-table-column prop="deliveryId" label="配送单号" width="100" />
-      <el-table-column prop="orderId" label="订单号" width="100" />
+      <el-table-column prop="orderNo" label="订单号" width="160">
+        <template #default="{ row }">{{ row.orderNo || row.orderId }}</template>
+      </el-table-column>
       <el-table-column prop="receiver" label="收货人" width="100" />
       <el-table-column prop="phone" label="电话" width="130" />
       <el-table-column prop="address" label="地址" min-width="200" show-overflow-tooltip />
@@ -33,8 +35,8 @@
       <el-table-column label="操作" width="220" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="openAssign(row)">分配骑手</el-button>
-          <el-button size="small" type="danger" v-if="row.status === 'PENDING'" @click="markDelivering(row)">开始配送</el-button>
-          <el-button size="small" type="success" v-if="row.status === 'DELIVERING'" @click="markDelivered(row)">完成配送</el-button>
+          <el-button size="small" type="danger" v-if="row.status === 'ASSIGNED'" @click="markDelivering(row)">开始配送</el-button>
+          <el-button size="small" type="success" v-if="row.status === 'PICKED_UP'" @click="markDelivered(row)">完成配送</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -135,7 +137,7 @@ async function markDelivered(row) {
 }
 
 function statusLabel(s) {
-  return { ASSIGNED: '待接单', PICKED_UP: '配送中', DELIVERED: '已完成', FAILED: '配送失败' }[s] || s
+  return { ASSIGNED: '待取件', PICKED_UP: '配送中', DELIVERED: '已送达', FAILED: '配送失败' }[s] || s
 }
 function statusType(s) {
   return { ASSIGNED: 'warning', PICKED_UP: 'primary', DELIVERED: 'success', FAILED: 'danger' }[s] || 'info'

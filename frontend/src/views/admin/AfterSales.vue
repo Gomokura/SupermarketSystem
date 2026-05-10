@@ -27,7 +27,7 @@
       <el-table-column prop="userId" label="用户ID" width="100" />
       <el-table-column prop="asType" label="类型" width="100">
         <template #default="{ row }">
-          {{ row.asType === 'REFUND' ? '退款' : '退货退款' }}
+          {{ row.asType === 'REFUND' ? '仅退款' : '退货退款' }}
         </template>
       </el-table-column>
       <el-table-column prop="reason" label="申请原因" min-width="150" />

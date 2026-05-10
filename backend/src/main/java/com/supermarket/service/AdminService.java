@@ -271,6 +271,11 @@ public class AdminService {
         deliveryMapper.selectPage(page, wrapper);
 
         page.getRecords().forEach(d -> {
+            Order order = orderMapper.selectById(d.getOrderId());
+            if (order != null) {
+                d.setOrderNo(order.getOrderNo());
+                fillDeliveryReceiver(d, order.getReceiverSnapshot());
+            }
             if (d.getCourierId() != null) {
                 Courier c = courierMapper.selectById(d.getCourierId());
                 if (c != null) {
@@ -280,6 +285,14 @@ public class AdminService {
             }
         });
         return Result.success(page);
+    }
+
+    private void fillDeliveryReceiver(Delivery delivery, String receiverSnapshot) {
+        if (!StringUtils.hasText(receiverSnapshot)) return;
+        String[] parts = receiverSnapshot.trim().split("\\s+", 3);
+        if (parts.length > 0) delivery.setReceiver(parts[0]);
+        if (parts.length > 1) delivery.setPhone(parts[1]);
+        if (parts.length > 2) delivery.setAddress(parts[2]);
     }
 
     @Transactional
@@ -939,6 +952,24 @@ public class AdminService {
         LambdaQueryWrapper<Courier> wrapper = new LambdaQueryWrapper<>();
         wrapper.orderByAsc(Courier::getCourierId);
         courierMapper.selectPage(page, wrapper);
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        Date todayStart = cal.getTime();
+
+        page.getRecords().forEach(courier -> {
+            courier.setPassword(null);
+            String status = courier.getStatus();
+            courier.setIsDisabled("inactive".equalsIgnoreCase(status) ? 1 : 0);
+            courier.setIsOnline("online".equalsIgnoreCase(status) || "active".equalsIgnoreCase(status));
+            long todayCount = deliveryTaskMapper.selectCount(new LambdaQueryWrapper<DeliveryTask>()
+                    .eq(DeliveryTask::getCourierId, courier.getCourierId())
+                    .eq(DeliveryTask::getStatus, "DELIVERED")
+                    .ge(DeliveryTask::getDeliverTime, todayStart));
+            courier.setTodayCount((int) todayCount);
+        });
         return Result.success(page);
     }
 
