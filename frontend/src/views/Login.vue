@@ -3,6 +3,7 @@
     <div class="login-card">
       <h1 class="brand-title">超市管理系统</h1>
       <p class="brand-subtitle">Smart Supermarket Management</p>
+      <div class="entry-hint">选择端口后会自动填入演示账号，登录后进入对应工作台</div>
 
       <div class="role-selector">
         <div
@@ -15,6 +16,7 @@
           <span class="role-icon">{{ role.icon }}</span>
           <span class="role-name">{{ role.name }}</span>
           <span class="role-desc">{{ role.desc }}</span>
+          <span class="role-entry">{{ role.entry }}</span>
         </div>
       </div>
 
@@ -26,6 +28,7 @@
               <strong>{{ currentRoleInfo.name }}</strong>测试账号：
               <code>{{ currentRoleInfo.username }}</code> /
               <code>{{ currentRoleInfo.password }}</code>
+              <em>进入 {{ currentRoleInfo.entry }}</em>
             </span>
             <el-button size="small" link type="primary" @click="fillTestAccount">一键填入</el-button>
           </div>
@@ -77,13 +80,14 @@
           <el-collapse-item title="查看所有测试账号" name="1">
             <table class="account-table">
               <thead>
-                <tr><th>角色</th><th>账号</th><th>密码</th></tr>
+                <tr><th>角色</th><th>账号</th><th>密码</th><th>入口</th></tr>
               </thead>
               <tbody>
                 <tr v-for="r in roles" :key="r.id" :class="{ highlight: activeRole === r.id }">
                   <td>{{ r.name }}</td>
                   <td><code>{{ r.username }}</code></td>
                   <td><code>{{ r.password }}</code></td>
+                  <td>{{ r.entry }}</td>
                 </tr>
               </tbody>
             </table>
@@ -96,29 +100,33 @@
 
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { authAPI } from '@/api'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 
 const formRef = ref()
 const loading = ref(false)
-const activeRole = ref('customer')
 
 const roles = [
-  { id: 'customer',  name: '顾客',  icon: '🛒', desc: '购物消费',  username: '13800138001', password: '123456' },
-  { id: 'admin',     name: '管理员', icon: '👑', desc: '系统管理',  username: 'admin',        password: '123456' },
-  { id: 'courier',   name: '配送员', icon: '🚴', desc: '订单配送',  username: '13900000001', password: '123456' },
-  { id: 'cashier',   name: '收银员', icon: '💳', desc: '收银结账',  username: 'cashier01',   password: '123456' },
-  { id: 'warehouse', name: '仓储',   icon: '📦', desc: '库存管理',  username: 'admin',        password: '123456' },
-  { id: 'dashboard', name: '看板',   icon: '📊', desc: '数据分析',  username: 'admin',        password: '123456' },
+  { id: 'customer',  name: '顾客',  icon: '🛒', desc: '购物消费',  entry: '用户端', username: '13800138001', password: '123456' },
+  { id: 'admin',     name: '管理员', icon: '👑', desc: '系统管理',  entry: '管理后台', username: 'admin', password: '123456' },
+  { id: 'courier',   name: '配送员', icon: '🚴', desc: '订单配送',  entry: '配送工作台', username: '13900000001', password: '123456' },
+  { id: 'cashier',   name: '收银员', icon: '💳', desc: '收银结账',  entry: '收银台', username: 'cashier01', password: '123456' },
+  { id: 'warehouse', name: '仓储',   icon: '📦', desc: '库存管理',  entry: '仓储后台', username: 'admin', password: '123456' },
+  { id: 'dashboard', name: '看板',   icon: '📊', desc: '数据分析',  entry: '数据看板', username: 'admin', password: '123456' },
 ]
 
-const loginForm = reactive({ username: '13800138001', password: '123456' })
+const roleIds = roles.map(role => role.id)
+const initialRole = roleIds.includes(route.query.role) ? route.query.role : 'customer'
+const activeRole = ref(initialRole)
+const initialRoleInfo = roles.find(role => role.id === initialRole) || roles[0]
+const loginForm = reactive({ username: initialRoleInfo.username, password: initialRoleInfo.password })
 
 const currentRoleInfo = computed(() => roles.find(r => r.id === activeRole.value) || roles[0])
 
@@ -136,6 +144,9 @@ const fillTestAccount = () => {
 
 // Auto-fill when role changes
 watch(activeRole, () => fillTestAccount())
+watch(() => route.query.role, (role) => {
+  if (roleIds.includes(role)) activeRole.value = role
+})
 
 const activeRules = computed(() => {
   if (activeRole.value === 'customer') {
@@ -178,10 +189,11 @@ const handleLogin = async () => {
       userStore.setToken(result.data.token)
     } else if (['admin', 'cashier', 'warehouse', 'dashboard'].includes(activeRole.value)) {
       result = await authAPI.adminLogin(loginData)
-      userStore.login('admin', {
+      const selectedRole = activeRole.value
+      userStore.login(selectedRole, {
         id: result.data.adminId,
         name: result.data.realName || result.data.username,
-        role: result.data.role || activeRole.value,
+        role: selectedRole,
         username: result.data.username
       })
       userStore.setAdminToken(result.data.token)
@@ -248,7 +260,17 @@ const handleLogin = async () => {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.6);
   text-align: center;
+  margin-bottom: 8px;
+}
+
+.entry-hint {
   margin-bottom: 22px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.72);
+  text-align: center;
+  font-size: 12px;
 }
 
 .role-selector {
@@ -259,6 +281,7 @@ const handleLogin = async () => {
 }
 
 .role-card {
+  min-height: 96px;
   padding: 10px 6px;
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid transparent;
@@ -295,6 +318,22 @@ const handleLogin = async () => {
   display: block;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.5);
+}
+
+.role-entry {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 10px;
+}
+
+.account-hint em {
+  margin-left: 8px;
+  color: #64748b;
+  font-style: normal;
 }
 
 .account-hint {
@@ -369,5 +408,15 @@ const handleLogin = async () => {
   padding: 1px 6px;
   border-radius: 4px;
   font-family: monospace;
+}
+
+@media (max-width: 560px) {
+  .login-card {
+    padding: 28px 18px;
+  }
+
+  .role-selector {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>

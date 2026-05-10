@@ -15,7 +15,9 @@
       <div class="toolbar">
         <el-select v-model="reason" placeholder="全部类型" clearable @change="reloadLogs">
           <el-option label="订单奖励" value="ORDER_REWARD" />
+          <el-option label="订单支付奖励" value="ORDER_PAY" />
           <el-option label="订单抵扣" value="ORDER_DEDUCT" />
+          <el-option label="收银抵扣" value="CASHIER_DEDUCT" />
           <el-option label="管理员调整" value="ADMIN_ADJUST" />
           <el-option label="退款返还" value="REFUND_ROLLBACK" />
           <el-option label="注册赠送" value="REGISTER_GIFT" />
@@ -79,7 +81,9 @@ const total = ref(0)
 const reasonText = (value) => {
   const map = {
     ORDER_REWARD: '订单奖励',
+    ORDER_PAY: '订单支付奖励',
     ORDER_DEDUCT: '订单抵扣',
+    CASHIER_DEDUCT: '收银抵扣',
     ADMIN_ADJUST: '管理员调整',
     REFUND_ROLLBACK: '退款返还',
     REGISTER_GIFT: '注册赠送'
@@ -88,7 +92,7 @@ const reasonText = (value) => {
 }
 
 const reasonTag = (value) => {
-  if (value === 'ORDER_DEDUCT') return 'danger'
+  if (value === 'ORDER_DEDUCT' || value === 'CASHIER_DEDUCT') return 'danger'
   if (value === 'ADMIN_ADJUST') return 'warning'
   return 'success'
 }

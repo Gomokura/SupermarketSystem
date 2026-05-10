@@ -184,7 +184,9 @@ const loadUserInfo = async () => {
 const loadPoints = async () => {
   try {
     const res = await pointsAPI.getMyPoints()
-    pointsBalance.value = res.data?.balance ?? 0
+    const value = typeof res.data === 'object' ? res.data?.balance : res.data
+    pointsBalance.value = Number(value ?? 0)
+    userStore.setUserInfo({ ...userStore.userInfo, points: pointsBalance.value })
   } catch (e) { console.error(e) }
 }
 

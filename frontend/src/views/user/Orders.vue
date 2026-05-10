@@ -31,16 +31,19 @@
 
         <!-- 商品列表 -->
         <div class="items-wrap" @click="viewDetail(order.orderId)">
-          <div class="order-item" v-for="item in (order.items || []).slice(0, 2)" :key="item.orderItemId">
+          <div class="order-item" v-for="item in (order.items || []).slice(0, 2)" :key="item.itemId">
             <img
-              :src="item.coverImage || `https://picsum.photos/seed/p${item.productId}/80/80`"
+              :src="item.productImage || item.coverImage || `https://picsum.photos/seed/p${item.productId}/80/80`"
               class="item-img"
               @error="e => e.target.src = `https://picsum.photos/seed/p${item.productId}/80/80`"
             />
             <div class="item-info">
               <div class="item-name">{{ item.productName }}</div>
-              <div class="item-price">￥{{ item.price }} × {{ item.quantity }}</div>
+              <div class="item-price">￥{{ item.unitPrice || item.price || 0 }} × {{ item.quantity }}</div>
             </div>
+          </div>
+          <div v-if="(order.items || []).length === 0" class="empty-items">
+            该演示订单暂无商品明细，点击查看详情
           </div>
           <div v-if="(order.items || []).length > 2" class="more-hint">
             还有 {{ order.items.length - 2 }} 件商品 ›
@@ -199,6 +202,11 @@ const reorder = async (id) => {
 .items-wrap { padding: 10px 14px; cursor: pointer; }
 .order-item { display: flex; gap: 10px; margin-bottom: 8px; }
 .order-item:last-child { margin-bottom: 0; }
+.empty-items {
+  padding: 10px 0;
+  color: #999;
+  font-size: 12px;
+}
 .item-img { width: 56px; height: 56px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
 .item-info { flex: 1; min-width: 0; }
 .item-name { font-size: 13px; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px; }

@@ -3,6 +3,9 @@
     <!-- 顶部导航栏 -->
     <header class="mobile-header">
       <div class="header-left">
+        <el-button v-if="showBack" class="back-btn" circle text @click="goBack">
+          <el-icon><ArrowLeft /></el-icon>
+        </el-button>
         <span class="logo">🛒 鲜惠超市</span>
       </div>
       <div class="header-center">
@@ -44,17 +47,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { messageAPI } from '@/api'
 import {
-  Search, Bell, HomeFilled, Grid, ShoppingCart, List, UserFilled
+  ArrowLeft, Search, Bell, HomeFilled, Grid, ShoppingCart, List, UserFilled
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 const unreadCount = ref(0)
+const showBack = computed(() => route.path !== '/')
 
 const tabs = [
   { path: '/', label: '首页', icon: HomeFilled, match: ['/'] },
@@ -68,6 +73,11 @@ const isActive = (tab) => {
   const p = route.path
   if (tab.path === '/') return p === '/'
   return tab.match.some(m => p === m || p.startsWith(m + '/') || (m !== '/' && p.startsWith(m)))
+}
+
+const goBack = () => {
+  if (window.history.length > 1) router.back()
+  else router.push('/')
 }
 
 const loadUnread = async () => {
@@ -106,7 +116,16 @@ watch(() => route.path, loadUnread)
   box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 
-.header-left { flex-shrink: 0; }
+.header-left { flex-shrink: 0; display: flex; align-items: center; gap: 4px; }
+.back-btn {
+  width: 30px;
+  height: 30px;
+  color: #fff;
+}
+.back-btn:hover {
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+}
 .logo { color: #fff; font-size: 17px; font-weight: bold; white-space: nowrap; }
 
 .header-center { flex: 1; min-width: 0; }

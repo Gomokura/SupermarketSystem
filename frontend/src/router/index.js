@@ -286,7 +286,21 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   const path = to.path
-  const currentRole = userStore.currentRole
+  const currentRole = userStore.currentRole || userStore.userInfo?.role
+  const defaultPath = {
+    customer: '/',
+    admin: '/admin',
+    cashier: '/pos',
+    courier: '/courier',
+    warehouse: '/admin',
+    dashboard: '/admin'
+  }
+  const allowedByRouteRole = {
+    customer: ['customer'],
+    courier: ['courier'],
+    cashier: ['cashier', 'admin'],
+    admin: ['admin', 'warehouse', 'dashboard']
+  }
 
   if (path === '/login') {
     next()
@@ -297,6 +311,15 @@ router.beforeEach((to, from, next) => {
   if (!currentRole && path !== '/login') {
     next('/login')
     return
+  }
+
+  const routeRole = to.meta.role
+  if (routeRole) {
+    const allowedRoles = allowedByRouteRole[routeRole] || [routeRole]
+    if (!allowedRoles.includes(currentRole)) {
+      next(defaultPath[currentRole] || '/login')
+      return
+    }
   }
 
   next()

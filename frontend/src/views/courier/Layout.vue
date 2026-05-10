@@ -2,6 +2,9 @@
   <div class="courier-shell">
     <header class="topbar">
       <div class="brand">
+        <el-button class="back-btn" circle @click="goBack">
+          <el-icon><ArrowLeft /></el-icon>
+        </el-button>
         <div class="brand-mark">配</div>
         <div>
           <div class="title">配送工作台</div>
@@ -73,10 +76,12 @@
 import { ref, provide, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User } from '@element-plus/icons-vue'
+import { ArrowLeft, User } from '@element-plus/icons-vue'
 import { courierAPI } from '@/api'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 const courierName = ref('配送员')
 const todayCount = ref(0)
 const isOnline = ref(false)
@@ -120,9 +125,14 @@ const toggleStatus = async () => {
   }
 }
 
+const goBack = () => {
+  if (window.history.length > 1) router.back()
+  else router.push('/login?role=courier')
+}
+
 const handleCommand = async (cmd) => {
   if (cmd === 'logout') {
-    localStorage.removeItem('courierToken')
+    userStore.logout()
     router.push('/login')
     return
   }
@@ -178,6 +188,18 @@ onMounted(loadProfile)
 
 .brand {
   gap: 12px;
+}
+
+.back-btn {
+  background: #273244;
+  border-color: #38465d;
+  color: #fff;
+}
+
+.back-btn:hover {
+  background: #344258;
+  border-color: #4a5a73;
+  color: #fff;
 }
 
 .brand-mark {

@@ -17,9 +17,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Date;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,7 +57,8 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
         wrapper.eq(Product::getIsDeleted, 0);
 
         if (categoryId != null && categoryId > 0) {
-            wrapper.eq(Product::getCategoryId, categoryId);
+            List<Integer> categoryIds = getCategoryAndChildIds(categoryId);
+            wrapper.in(Product::getCategoryId, categoryIds);
         }
         if (brandId != null && brandId > 0) {
             wrapper.eq(Product::getBrandId, brandId);
@@ -91,6 +94,23 @@ public class ProductService extends ServiceImpl<ProductMapper, Product> {
         Page<Product> page = new Page<>(pageNum, pageSize);
         Page<Product> result = this.page(page, wrapper);
         return Result.success(result);
+    }
+
+    private List<Integer> getCategoryAndChildIds(Integer categoryId) {
+        Set<Integer> ids = new LinkedHashSet<>();
+        ids.add(categoryId);
+        List<Category> all = categoryMapper.selectList(null);
+        collectChildCategoryIds(categoryId, all, ids);
+        return new ArrayList<>(ids);
+    }
+
+    private void collectChildCategoryIds(Integer parentId, List<Category> all, Set<Integer> ids) {
+        for (Category category : all) {
+            if (parentId.equals(category.getParentId())) {
+                ids.add(category.getCategoryId());
+                collectChildCategoryIds(category.getCategoryId(), all, ids);
+            }
+        }
     }
 
     /**

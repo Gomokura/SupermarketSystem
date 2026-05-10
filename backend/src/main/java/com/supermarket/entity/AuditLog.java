@@ -13,8 +13,9 @@ public class AuditLog {
     @TableId(value = "LOG_ID", type = IdType.INPUT)
     @TableField("log_id")
     private Integer logId;
-    @TableField("operator_id")
+    @TableField("admin_id")
     private Integer operatorId;
+    @TableField("admin_name")
     private String operatorName;
     private String module;
     private String action;

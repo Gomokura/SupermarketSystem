@@ -168,9 +168,9 @@ const seckillProducts = ref([])
 const promotions = ref([])
 
 const quickEntries = [
-  { icon: '🍎', label: '生鲜食品', path: '/products?categoryId=1', color: '#fff0f0' },
-  { icon: '🧴', label: '日用百货', path: '/products?categoryId=2', color: '#f0f8ff' },
-  { icon: '🥤', label: '饮料零食', path: '/products?categoryId=3', color: '#f0fff4' },
+  { icon: '🥤', label: '饮料', path: '/products?categoryId=1', color: '#f0fff4' },
+  { icon: '🍪', label: '食品', path: '/products?categoryId=2', color: '#fff8f0' },
+  { icon: '🧴', label: '日用品', path: '/products?categoryId=3', color: '#f0f8ff' },
   { icon: '⚡', label: '限时秒杀', path: '/seckill', color: '#fff8f0' },
   { icon: '🛒', label: '购物车', path: '/cart', color: '#f5f0ff' },
   { icon: '📦', label: '我的订单', path: '/orders', color: '#f0f0ff' },

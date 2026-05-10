@@ -51,6 +51,7 @@
       <!-- 顶部栏 -->
       <header class="topbar">
         <div class="breadcrumb-area">
+          <el-button class="back-btn" :icon="ArrowLeft" @click="goBack">返回</el-button>
           <el-breadcrumb separator="/">
             <el-breadcrumb-item :to="{ path: '/admin' }">首页</el-breadcrumb-item>
             <el-breadcrumb-item v-if="currentPageTitle">{{ currentPageTitle }}</el-breadcrumb-item>
@@ -102,7 +103,7 @@ import { useUserStore } from '@/stores/user'
 import { getMenuByRole, flattenMenu } from '@/config/menuConfig'
 import {
   ShoppingCart, DataAnalysis, Goods, Collection, List, User, Box, Van,
-  Discount, Money, Setting, Fold, Expand, ArrowDown, SwitchButton
+  Discount, Money, Setting, Fold, Expand, ArrowDown, ArrowLeft, SwitchButton
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -125,6 +126,12 @@ const currentPageTitle = computed(() => {
   const found = allMenus.find(m => m.path === route.path)
   return found?.label || ''
 })
+
+const goBack = () => {
+  if (route.path === '/admin') return
+  if (window.history.length > 1) router.back()
+  else router.push('/admin')
+}
 
 const handleCommand = (cmd) => {
   if (cmd === 'logout') {
@@ -231,7 +238,16 @@ const handleCommand = (cmd) => {
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   flex-shrink: 0;
 }
-.breadcrumb-area { flex: 1; }
+.breadcrumb-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.back-btn {
+  height: 32px;
+  padding: 0 12px;
+}
 .topbar-right {
   display: flex;
   align-items: center;
