@@ -291,6 +291,10 @@ const openProducts = async (row) => {
 }
 
 const loadProducts = async (seckillId) => {
+  if (!seckillId) {
+    productList.value = []
+    return
+  }
   try {
     const res = await seckillAPI.adminGetActivityProducts(seckillId)
     productList.value = res.data || []

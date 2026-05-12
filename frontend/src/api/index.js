@@ -139,7 +139,8 @@ export const seckillAPI = {
   adminCreate: (data) => adminRequest.post('/seckill/admin/activities', data),
   adminUpdate: (id, data) => adminRequest.put(`/seckill/admin/activities/${id}`, data),
   adminUpsertProducts: (seckillId, items) => adminRequest.post(`/seckill/admin/activities/${seckillId}/products`, items),
-  adminGetActivityProducts: (seckillId) => adminRequest.get(`/seckill/admin/activities/${seckillId}/products`)
+  adminGetActivityProducts: (seckillId) => adminRequest.get(`/seckill/admin/activities/${seckillId}/products`),
+  adminDeleteActivityProduct: (seckillId, productId) => adminRequest.delete(`/seckill/admin/activities/${seckillId}/products/${productId}`)
 }
 
 export const promotionAPI = {

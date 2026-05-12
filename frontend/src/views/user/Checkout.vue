@@ -358,6 +358,18 @@ const onCityChange = () => {
 
 const toCents = (price) => Math.round(Number(price) * 100)
 const toYuan = (cents) => (Number(cents) / 100).toFixed(2)
+const couponValue = (c) => Number(c?.discount ?? c?.faceValue ?? c?.discountValue ?? 0)
+const couponMinAmount = (c) => Number(c?.minAmount ?? c?.minOrderAmount ?? 0)
+const couponDiscountAmount = (c) => {
+  if (!c) return 0
+  const value = couponValue(c)
+  if (c.couponType === 'discount') {
+    const rate = value > 1 ? value / 10 : value
+    if (rate <= 0 || rate >= 1) return 0
+    return Math.round(productTotal.value * (1 - rate) * 100) / 100
+  }
+  return Math.min(value, productTotal.value)
+}
 
 const userPoints = computed(() => userStore.userInfo?.points || 0)
 const productTotal = computed(() => {
@@ -374,13 +386,7 @@ const pointsDeduction = computed(() => usePoints.value ? maxPointsDeduction.valu
 const couponDiscount = computed(() => {
   if (!selectedCouponId.value) return 0
   const c = availableCoupons.value.find(x => x.userCouponId === selectedCouponId.value)
-  if (!c) return 0
-  if (c.couponType === 'full_reduction') return c.discountValue
-  if (c.couponType === 'discount') {
-    const discountCents = Math.round(productTotal.value * (1 - c.discountValue / 10) * 100)
-    return discountCents / 100
-  }
-  return 0
+  return couponDiscountAmount(c)
 })
 
 const actualAmount = computed(() => {
@@ -429,12 +435,7 @@ const selectBestCoupon = () => {
   let maxDiscount = 0
   
   for (const c of availableCoupons.value) {
-    let discount = 0
-    if (c.couponType === 'full_reduction') {
-      discount = c.discountValue
-    } else if (c.couponType === 'discount') {
-      discount = productTotal.value * (1 - c.discountValue / 10)
-    }
+    const discount = couponDiscountAmount(c)
     
     if (discount > maxDiscount) {
       maxDiscount = discount
@@ -457,8 +458,8 @@ const calcPrice = async () => {
 }
 
 const couponLabel = (c) => {
-  if (c.couponType === 'full_reduction') return `满${c.minOrderAmount}减${c.discountValue}元`
-  if (c.couponType === 'discount') return `${c.discountValue}折优惠券`
+  if (c.couponType === 'full_reduction' || c.couponType === 'category') return `满${couponMinAmount(c)}减${couponValue(c)}元`
+  if (c.couponType === 'discount') return `${couponValue(c) > 1 ? couponValue(c) : couponValue(c) * 10}折优惠券`
   return c.couponName
 }
 
@@ -484,7 +485,7 @@ const submitOrder = async () => {
       const orderData = {
         addressId: selectedAddressId.value,
         paymentMethod: paymentMethod.value,
-        couponId: selectedCouponId.value || undefined,
+        userCouponId: selectedCouponId.value || undefined,
         remark: remark.value || undefined,
         deliveryTimeSlot: deliveryTimeStr,
         items: cartItems.value.map(i => ({ productId: i.productId, skuId: i.skuId, quantity: i.quantity }))

@@ -16,7 +16,7 @@ public class OrderController {
     @Autowired
     private OrderService orderService;
 
-    // ==================== C端 ====================
+    // ==================== C�?====================
 
     /**
      * 用户订单列表
@@ -56,14 +56,14 @@ public class OrderController {
                 request.getAddressId(),
                 request.getPaymentMethod(),
                 request.getItems(),
-                request.getCouponId(),
+                selectedCoupon(request),
                 request.getPointsUsed(),
                 request.getRemark(),
                 request.getDeliveryTimeSlot()
         );
     }
 
-    /** 结算预览（不创建订单） */
+    /** 结算预览（不创建订单�?*/
     @PostMapping("/preview")
     public Result<?> previewOrder(
             @RequestAttribute Integer userId,
@@ -72,7 +72,7 @@ public class OrderController {
                 userId,
                 request.getAddressId(),
                 request.getItems(),
-                request.getCouponId(),
+                selectedCoupon(request),
                 request.getPointsUsed()
         );
     }
@@ -112,7 +112,7 @@ public class OrderController {
         return orderService.confirmReceipt(orderId, userId);
     }
 
-    /** 订单时间线 */
+    /** 订单时间�?*/
     @GetMapping("/{orderId}/timeline")
     public Result<?> getOrderTimeline(
             @PathVariable Integer orderId,
@@ -120,7 +120,7 @@ public class OrderController {
         return orderService.getOrderStatusLogs(orderId, userId, false);
     }
 
-    // ==================== B端管理 ====================
+    // ==================== B端管�?====================
 
     /**
      * 管理后台订单列表
@@ -138,7 +138,7 @@ public class OrderController {
         return orderService.adminGetOrderList(status, orderNo, userId, startDate, endDate, pageNum, pageSize);
     }
 
-    /** 管理后台查看订单时间线 */
+    /** 管理后台查看订单时间�?*/
     @GetMapping("/admin/{orderId}/timeline")
     public Result<?> adminGetOrderTimeline(
             @PathVariable Integer orderId,
@@ -179,7 +179,7 @@ public class OrderController {
     }
 
     /**
-     * 管理员取消订单
+     * 管理员取消订�?
      * PUT /orders/{orderId}/admin-cancel
      * body: { "reason": "..." }
      */
@@ -207,7 +207,7 @@ public class OrderController {
     }
 
     // ==================== 收银台端 ====================
-    /** C-46 再次购买：将历史订单商品加入购物车 */
+    /** C-46 再次购买：将历史订单商品加入购物�?*/
     @PostMapping("/{orderId}/reorder")
     public Result<?> reorder(
             @PathVariable Integer orderId,
@@ -215,7 +215,7 @@ public class OrderController {
         return orderService.reorder(orderId, userId);
     }
     /**
-     * 收银台快速下单（扫码/手动录入）
+     * 收银台快速下单（扫码/手动录入�?
      * POST /orders/cashier
      * body: { payMethod, receivedAmount, items: [{productId, quantity}] }
      */
@@ -233,11 +233,35 @@ public class OrderController {
         List<CreateOrderRequest.CartItem> items = new java.util.ArrayList<>();
         for (Map<String, Object> raw : rawItems) {
             CreateOrderRequest.CartItem item = new CreateOrderRequest.CartItem();
-            item.setProductId((Integer) raw.get("productId"));
-            item.setQuantity((Integer) raw.get("quantity"));
+            item.setProductId(toInteger(raw.get("productId")));
+            item.setQuantity(toStrictInteger(raw.get("quantity")));
             items.add(item);
         }
 
         return orderService.cashierCreateOrder(userId, userId, items, payMethod, receivedAmount);
+    }
+    private Integer toInteger(Object value) {
+        if (value == null) return null;
+        if (value instanceof Integer i) return i;
+        if (value instanceof Number n) return n.intValue();
+        return Integer.valueOf(value.toString());
+    }
+
+    private Integer selectedCoupon(CreateOrderRequest request) {
+        if (request == null) return null;
+        return request.getUserCouponId() != null ? request.getUserCouponId() : request.getCouponId();
+    }
+
+    private Integer toStrictInteger(Object value) {
+        if (value == null) return null;
+        if (value instanceof Integer i) return i;
+        if (value instanceof Number n) {
+            double d = n.doubleValue();
+            if (d % 1 != 0) throw new IllegalArgumentException("quantity must be integer");
+            return n.intValue();
+        }
+        String text = value.toString();
+        if (!text.matches("\\d+")) throw new IllegalArgumentException("quantity must be integer");
+        return Integer.valueOf(text);
     }
 }

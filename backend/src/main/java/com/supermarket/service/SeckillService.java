@@ -62,6 +62,9 @@ public class SeckillService extends ServiceImpl<SeckillActivityModelMapper, Seck
     }
 
     public Result<?> getActivityProducts(Integer seckillId) {
+        if (seckillId == null) {
+            throw new BusinessException("seckillId cannot be null");
+        }
         LambdaQueryWrapper<SeckillActivityProductModel> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SeckillActivityProductModel::getSeckillId, seckillId);
         List<SeckillActivityProductModel> rows = new ArrayList<>(seckillProductMapper.selectList(wrapper));
@@ -192,6 +195,21 @@ public class SeckillService extends ServiceImpl<SeckillActivityModelMapper, Seck
             }
         }
 
+        return Result.success();
+    }
+
+    @Transactional
+    public Result<?> adminDeleteSeckillProduct(Integer activityId, Integer productId) {
+        if (activityId == null) {
+            throw new BusinessException("activityId cannot be null");
+        }
+        if (productId == null) {
+            throw new BusinessException("productId cannot be null");
+        }
+        LambdaQueryWrapper<SeckillActivityProductModel> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SeckillActivityProductModel::getSeckillId, activityId)
+                .eq(SeckillActivityProductModel::getProductId, productId);
+        seckillProductMapper.delete(wrapper);
         return Result.success();
     }
 }

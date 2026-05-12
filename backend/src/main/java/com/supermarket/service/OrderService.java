@@ -856,7 +856,9 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
             if (!"active".equalsIgnoreCase(c.getStatus())) continue;
             if (c.getStartTime() != null && now.before(c.getStartTime())) continue;
             if (c.getEndTime() != null && now.after(c.getEndTime())) continue;
-            if (selectedCouponId != null && !selectedCouponId.equals(c.getCouponId())) continue;
+            if (selectedCouponId != null
+                    && !selectedCouponId.equals(uc.getUcId())
+                    && !selectedCouponId.equals(c.getCouponId())) continue;
 
             double discount = computeCouponDiscount(c, cartItems, products, totalAmount);
             if (discount <= 0) continue;

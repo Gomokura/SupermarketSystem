@@ -57,5 +57,17 @@ public class SeckillController {
             @RequestBody List<SeckillActivityProductModel> items) {
         return seckillService.adminUpsertSeckillProducts(seckillId, items);
     }
+
+    @GetMapping("/admin/activities/{seckillId}/products")
+    public Result<?> adminGetActivityProducts(@PathVariable Integer seckillId) {
+        return seckillService.getActivityProducts(seckillId);
+    }
+
+    @DeleteMapping("/admin/activities/{seckillId}/products/{productId}")
+    public Result<?> adminDeleteActivityProduct(
+            @PathVariable Integer seckillId,
+            @PathVariable Integer productId) {
+        return seckillService.adminDeleteSeckillProduct(seckillId, productId);
+    }
 }
 
